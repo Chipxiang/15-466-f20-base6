@@ -38,10 +38,50 @@ Load< Scene > game_scene(LoadTagDefault, []() -> Scene const* {
 
 PlayMode::PlayMode(Client &client_) : client(client_) {
 	scene = *game_scene;
+
+	for (auto& transform : scene.transforms) {
+		if (transform.name.find("Player") == 0) {
+			Player player = { &transform, (int)transform.position.x / 2, (int)transform.position.y / 2 };
+			players.push_back(player);
+		}
+	}
+	if (players.size() == 0) throw std::runtime_error("player not found.");
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
 	std::cout << camera->transform->position.x << "," << camera->transform->position.y << "," << camera->transform->position.z << std::endl;
 	std::cout << camera->transform->rotation.x << "," << camera->transform->rotation.y << "," << camera->transform->rotation.z << std::endl;
+}
+void PlayMode::levelup(int id, int count) {
+	for (int i = 0; i < count; i++) {
+		Mesh const& mesh = game_scene_meshes->lookup("Level");
+
+		// create new transform
+		scene.transforms.emplace_back();
+		Scene::Transform* t = &scene.transforms.back();
+		t->name = "Level";
+		t->parent = players[id].transform;
+		t->position = (float)players[id].level_drawables.size() * level_spacing + level_offset;
+		t->scale = glm::vec3(0.5f, 0.5f, 0.2f);
+		Scene::Drawable drawable(t);
+		drawable.pipeline = lit_color_texture_program_pipeline;
+		drawable.pipeline.vao = game_scene_meshes_for_lit_color_texture_program;
+		drawable.pipeline.type = mesh.type;
+		drawable.pipeline.start = mesh.start;
+		drawable.pipeline.count = mesh.count;
+		scene.drawables.emplace_back(drawable);
+		std::list<Scene::Drawable>::iterator it = scene.drawables.end();
+		it--;
+		players[id].level_drawables.push_back(it);
+	}
+}
+
+void PlayMode::leveldown(int id, int count) {
+	for (int i = 0; i < count; i++) {
+		if (players[id].level_drawables.size() > 0) {
+			scene.drawables.erase(players[id].level_drawables.back());
+			players[id].level_drawables.pop_back();
+		}
+	}
 }
 
 PlayMode::~PlayMode() {
@@ -50,8 +90,12 @@ PlayMode::~PlayMode() {
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
 
 	if (evt.type == SDL_KEYDOWN) {
+
 		if (evt.key.repeat) {
 			//ignore repeats
+		} else if (evt.key.keysym.sym == SDLK_ESCAPE) {
+			SDL_SetRelativeMouseMode(SDL_FALSE);
+			return true;
 		} else if (evt.key.keysym.sym == SDLK_a) {
 			left.downs += 1;
 			left.pressed = true;
@@ -69,6 +113,16 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			down.pressed = true;
 			return true;
 		}
+		else if (evt.key.keysym.sym == SDLK_SPACE) {
+			space.downs += 1;
+			space.pressed = true;
+			return true;
+		}
+		else if (evt.key.keysym.sym == SDLK_BACKSPACE) {
+			backspace.downs += 1;
+			backspace.pressed = true;
+			return true;
+		}
 	} else if (evt.type == SDL_KEYUP) {
 		if (evt.key.keysym.sym == SDLK_a) {
 			left.pressed = false;
@@ -81,6 +135,13 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_s) {
 			down.pressed = false;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_SPACE) {
+			space.pressed = false;
+			return true;
+		}
+		else if (evt.key.keysym.sym == SDLK_BACKSPACE) {
+			backspace.pressed = false;
 			return true;
 		}
 	}else if (evt.type == SDL_MOUSEBUTTONDOWN) {
@@ -115,13 +176,35 @@ void PlayMode::update(float elapsed) {
 		client.connections.back().send(down.downs);
 		client.connections.back().send(up.downs);
 	}
-
+	if (left.downs && players[myid].x > xmin) {
+		players[myid].x--;
+		players[myid].transform->position.x -= unit;
+	}
+	if (right.downs && players[myid].x < xmax) {
+		players[myid].x++;
+		players[myid].transform->position.x += unit;
+	}
+	if (up.downs && players[myid].y < ymax) {
+		players[myid].y++;
+		players[myid].transform->position.y += unit;
+	}
+	if (down.downs && players[myid].y > ymin) {
+		players[myid].y--;
+		players[myid].transform->position.y -= unit;
+	}
+	if (space.downs) {
+		levelup(myid, 3);
+	}
+	if (backspace.downs) {
+		leveldown(myid, 2);
+	}
 	//reset button press counters:
 	left.downs = 0;
 	right.downs = 0;
 	up.downs = 0;
 	down.downs = 0;
-
+	space.downs = 0;
+	backspace.downs = 0;
 	//send/receive data:
 	client.poll([this](Connection *c, Connection::Event event){
 		if (event == Connection::OnOpen) {
@@ -164,7 +247,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 0.95f)));
 	glUseProgram(0);
 
-	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClearDepth(1.0f); //1.0 is actually the default value to clear the depth buffer to, but FYI you can change it.
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
