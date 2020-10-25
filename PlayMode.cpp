@@ -88,8 +88,8 @@ PlayMode::~PlayMode() {
 }
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
-
 	if (evt.type == SDL_KEYDOWN) {
+		if (pressed) return false;
 		pressed = true;
 		if (evt.key.repeat) {
 			//ignore repeats
@@ -115,16 +115,9 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		} else if (evt.key.keysym.sym == SDLK_e) {
 			defend = 1;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_q) {
-			magic_attack += 1;
-			return true;
 		} else if (evt.key.keysym.sym == SDLK_SPACE) {
-			charge = 1;
 			space.downs += 1;
 			space.pressed = true;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_f) {
-			attack = 1;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_BACKSPACE) {
 			backspace.downs += 1;
@@ -182,10 +175,9 @@ void PlayMode::update(float elapsed) {
 		client.connections.back().send(right.downs);
 		client.connections.back().send(down.downs);
 		client.connections.back().send(up.downs);
-		client.connections.back().send(charge);
+		client.connections.back().send(space.downs);
 		client.connections.back().send(defend);
-		client.connections.back().send(attack);
-		client.connections.back().send(magic_attack);
+		client.connections.back().send(backspace.downs);
 	}
 	if (left.downs && players[myid].x > xmin) {
 		players[myid].x--;
@@ -217,7 +209,6 @@ void PlayMode::update(float elapsed) {
 	charge = 0;
 	defend = 0;
 	attack = 0;
-	magic_attack = 0;
 	pressed = false;
 
 	space.downs = 0;

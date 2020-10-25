@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 
 	int numPlayer = 2;
 	//------------ main loop ------------
-	constexpr float ServerTick = 3.0f; //TODO: set a server tick that makes sense for your game
+	constexpr float ServerTick = 10.0f; //TODO: set a server tick that makes sense for your game
 
 	//server state:
 
@@ -40,6 +40,7 @@ int main(int argc, char **argv) {
 			x = next_player_id;
 			y = next_player_id;
 			next_player_id += 1;
+			alive = true;
 		}
 		std::string name;
 
@@ -48,12 +49,12 @@ int main(int argc, char **argv) {
 		uint32_t up_presses = 0;
 		uint32_t down_presses = 0;
 		bool defend = false;
-		bool attack = false;
-		uint32_t magic_attack = 0;
+		uint32_t attack = 0;
 
 		int32_t x = 0;
 		int32_t y = 0;
 		uint32_t energy = 0;
+		bool alive = true;
 
 	};
 	std::unordered_map< Connection *, PlayerInfo > players;
@@ -96,7 +97,7 @@ int main(int argc, char **argv) {
 
 						//handle messages from client:
 						//TODO: update for the sorts of messages your clients send
-						while (c->recv_buffer.size() >= 9) {
+						while (c->recv_buffer.size() >= 8) {
 							//expecting five-byte messages 'b' (left count) (right count) (down count) (up count)
 							char type = c->recv_buffer[0];
 							if (type != 'b') {
@@ -111,11 +112,10 @@ int main(int argc, char **argv) {
 							player.down_presses = c->recv_buffer[3];
 							player.up_presses = c->recv_buffer[4];
 							player.energy += c->recv_buffer[5];
-							if (c->recv_buffer[6] == 1) player.defend = true;
-							if (c->recv_buffer[7] == 1) player.attack = true;
-							player.magic_attack = c->recv_buffer[8];
+							player.defend = (c->recv_buffer[6] == 1);
+							player.attack = c->recv_buffer[5];
 
-							c->recv_buffer.erase(c->recv_buffer.begin(), c->recv_buffer.begin() + 9);
+							c->recv_buffer.erase(c->recv_buffer.begin(), c->recv_buffer.begin() + 8);
 						}
 					}
 
@@ -144,11 +144,31 @@ int main(int argc, char **argv) {
 					player.y += 1;
 				}
 
-				if (status_message != "") status_message += " | ";
-				status_message += std::to_string(player.x) + ", " + std::to_string(player.y) + " (" + player.name + ")";
+				// if (status_message != "") status_message += " | ";
+				// status_message += std::to_string(player.x) + ", " + std::to_string(player.y) + " (" + player.name + ")";
+			}
+
+			for (auto &[c1, player1] : players) {
+				(void)c1; //work around "unused variable" warning on whatever version of g++ github actions is running
+				if (player1.alive && player1.attack > 0){
+					(void)c1;
+					for (auto &[c2, player2] : players) {
+						if (player1.name != player2.name && abs(player1.x-player2.x) <= player1.attack && abs(player1.y-player2.y) <= player1.attack && player1.attack > player2.attack && player2.defend == 0){
+							player2.alive = false;
+						}
+					}
+				}
+				
+
+				
 			}
 			//std::cout << status_message << std::endl; //DEBUG
 
+			for (auto &[c, player] : players) {
+				(void)c; //work around "unused variable" warning on whatever version of g++ github actions is running
+				if (status_message != "") status_message += "|";
+				status_message += player.name + "," +std::to_string(player.alive)+","+std::to_string(player.x) + "," + std::to_string(player.y) + "," +std::to_string(player.energy)+","+std::to_string(player.attack)+","+std::to_string(player.defend);
+			}
 			//send updated game state to all clients
 			//TODO: update for your game state
 		} else {
