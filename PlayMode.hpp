@@ -1,7 +1,8 @@
 #include "Mode.hpp"
 
 #include "Connection.hpp"
-
+#include "Scene.hpp"
+#include "Sound.hpp"
 #include <glm/glm.hpp>
 
 #include <vector>
@@ -16,6 +17,8 @@ struct PlayMode : Mode {
 	virtual void update(float elapsed) override;
 	virtual void draw(glm::uvec2 const &drawable_size) override;
 
+	Scene scene;
+
 	//----- game state -----
 
 	//input tracking:
@@ -29,5 +32,7 @@ struct PlayMode : Mode {
 
 	//connection to server:
 	Client &client;
+	Scene::Camera* camera = nullptr;
+
 
 };
