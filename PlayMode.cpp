@@ -120,17 +120,13 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_SPACE) {
 			charge = 1;
+			space.downs += 1;
+			space.pressed = true;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_f) {
 			attack = 1;
 			return true;
-		}
-		else if (evt.key.keysym.sym == SDLK_SPACE) {
-			space.downs += 1;
-			space.pressed = true;
-			return true;
-		}
-		else if (evt.key.keysym.sym == SDLK_BACKSPACE) {
+		} else if (evt.key.keysym.sym == SDLK_BACKSPACE) {
 			backspace.downs += 1;
 			backspace.pressed = true;
 			return true;
@@ -177,7 +173,6 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void PlayMode::update(float elapsed) {
-	std::cout << "Updating" << std::endl;
 	//queue data for sending to server:
 	//TODO: send something that makes sense for your game
 	if (pressed) {
@@ -209,10 +204,10 @@ void PlayMode::update(float elapsed) {
 		players[myid].transform->position.y -= unit;
 	}
 	if (space.downs) {
-		levelup(myid, 3);
+		levelup(myid, 1);
 	}
 	if (backspace.downs) {
-		leveldown(myid, 2);
+		leveldown(myid, 1);
 	}
 	//reset button press counters:
 	left.downs = 0;
