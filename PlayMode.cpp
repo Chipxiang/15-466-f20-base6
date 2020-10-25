@@ -90,7 +90,7 @@ PlayMode::~PlayMode() {
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
 
 	if (evt.type == SDL_KEYDOWN) {
-
+		pressed = true;
 		if (evt.key.repeat) {
 			//ignore repeats
 		} else if (evt.key.keysym.sym == SDLK_ESCAPE) {
@@ -111,6 +111,18 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		} else if (evt.key.keysym.sym == SDLK_s) {
 			down.downs += 1;
 			down.pressed = true;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_e) {
+			defend = 1;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_q) {
+			magic_attack += 1;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_SPACE) {
+			charge = 1;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_f) {
+			attack = 1;
 			return true;
 		}
 		else if (evt.key.keysym.sym == SDLK_SPACE) {
@@ -168,13 +180,17 @@ void PlayMode::update(float elapsed) {
 	std::cout << "Updating" << std::endl;
 	//queue data for sending to server:
 	//TODO: send something that makes sense for your game
-	if (left.downs || right.downs || down.downs || up.downs) {
+	if (pressed) {
 		//send a five-byte message of type 'b':
 		client.connections.back().send('b');
 		client.connections.back().send(left.downs);
 		client.connections.back().send(right.downs);
 		client.connections.back().send(down.downs);
 		client.connections.back().send(up.downs);
+		client.connections.back().send(charge);
+		client.connections.back().send(defend);
+		client.connections.back().send(attack);
+		client.connections.back().send(magic_attack);
 	}
 	if (left.downs && players[myid].x > xmin) {
 		players[myid].x--;
@@ -203,6 +219,12 @@ void PlayMode::update(float elapsed) {
 	right.downs = 0;
 	up.downs = 0;
 	down.downs = 0;
+	charge = 0;
+	defend = 0;
+	attack = 0;
+	magic_attack = 0;
+	pressed = false;
+
 	space.downs = 0;
 	backspace.downs = 0;
 	//send/receive data:

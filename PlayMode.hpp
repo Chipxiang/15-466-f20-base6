@@ -54,4 +54,11 @@ struct PlayMode : Mode {
 	Scene::Camera* camera = nullptr;
 
 
+	uint8_t defend;
+	uint8_t attack;
+	uint8_t magic_attack;
+	uint8_t charge;
+
+	bool pressed = false;
+
 };
