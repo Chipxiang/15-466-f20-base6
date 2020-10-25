@@ -4,12 +4,44 @@
 #include "gl_errors.hpp"
 #include "data_path.hpp"
 #include "hex_dump.hpp"
+#include "Load.hpp"
+#include "Mesh.hpp"
+#include "LitColorTextureProgram.hpp"
 
 #include <glm/gtc/type_ptr.hpp>
 
 #include <random>
 
+GLuint game_scene_meshes_for_lit_color_texture_program = 0;
+Load< MeshBuffer > game_scene_meshes(LoadTagDefault, []() -> MeshBuffer const* {
+	MeshBuffer const* ret = new MeshBuffer(data_path("game_map.pnct"));
+	game_scene_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+	return ret;
+	});
+
+Load< Scene > game_scene(LoadTagDefault, []() -> Scene const* {
+	return new Scene(data_path("game_map.scene"), [&](Scene& scene, Scene::Transform* transform, std::string const& mesh_name) {
+		Mesh const& mesh = game_scene_meshes->lookup(mesh_name);
+
+		scene.drawables.emplace_back(transform);
+		Scene::Drawable& drawable = scene.drawables.back();
+
+		drawable.pipeline = lit_color_texture_program_pipeline;
+
+		drawable.pipeline.vao = game_scene_meshes_for_lit_color_texture_program;
+		drawable.pipeline.type = mesh.type;
+		drawable.pipeline.start = mesh.start;
+		drawable.pipeline.count = mesh.count;
+
+		});
+	});
+
 PlayMode::PlayMode(Client &client_) : client(client_) {
+	scene = *game_scene;
+	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
+	camera = &scene.cameras.front();
+	std::cout << camera->transform->position.x << "," << camera->transform->position.y << "," << camera->transform->position.z << std::endl;
+	std::cout << camera->transform->rotation.x << "," << camera->transform->rotation.y << "," << camera->transform->rotation.z << std::endl;
 }
 
 PlayMode::~PlayMode() {
@@ -62,13 +94,28 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			down.pressed = false;
 			return true;
 		}
+	}else if (evt.type == SDL_MOUSEBUTTONDOWN) {
+		if (SDL_GetRelativeMouseMode() == SDL_FALSE) {
+			SDL_SetRelativeMouseMode(SDL_TRUE);
+			return true;
+		}
+	} else if (evt.type == SDL_MOUSEMOTION) {
+		if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
+			glm::vec2 motion = glm::vec2(
+				evt.motion.xrel / float(window_size.y),
+				-evt.motion.yrel / float(window_size.y)
+			);
+			camera->transform->position.x += motion.x * 8.0f;
+			camera->transform->position.y += motion.y * 8.0f;
+			return true;
+		}
 	}
 
 	return false;
 }
 
 void PlayMode::update(float elapsed) {
-
+	std::cout << "Updating" << std::endl;
 	//queue data for sending to server:
 	//TODO: send something that makes sense for your game
 	if (pressed) {
@@ -126,8 +173,24 @@ void PlayMode::update(float elapsed) {
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
+	camera->aspect = float(drawable_size.x) / float(drawable_size.y);
+
+	//set up light type and position for lit_color_texture_program:
+	// TODO: consider using the Light(s) in the scene to do this
+
+	glUseProgram(lit_color_texture_program->program);
+	glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
+	glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f,-1.0f)));
+	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 0.95f)));
+	glUseProgram(0);
+
 	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
+	glClearDepth(1.0f); //1.0 is actually the default value to clear the depth buffer to, but FYI you can change it.
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
+	scene.draw(*camera);
 
 	{ //use DrawLines to overlay some text:
 		glDisable(GL_DEPTH_TEST);
