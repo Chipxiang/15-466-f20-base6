@@ -161,7 +161,7 @@ int main(int argc, char **argv) {
 					
 				}
 			}
-			
+
 			for (auto &[c1, player1] : players) {
 				(void)c1; //work around "unused variable" warning on whatever version of g++ github actions is running
 				if (player1.alive && player1.action == 2){
