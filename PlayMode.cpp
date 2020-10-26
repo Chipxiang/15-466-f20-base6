@@ -38,20 +38,20 @@ Load< Scene > game_scene(LoadTagDefault, []() -> Scene const* {
 
 PlayMode::PlayMode(Client &client_) : client(client_) {
 	scene = *game_scene;
-	/*std::list<Scene::Drawable>::iterator it;
+	// std::list<Scene::Drawable>::iterator it;
 
-	for (auto& drawable : scene.) {
+	for (auto& transform : scene.transforms) {
 		if (transform.name.find("Player") == 0) {
 			Player player = { &transform, (int)transform.position.x / 2, (int)transform.position.y / 2 };
 			players.push_back(player);
 		}
-		else if (transform.name.find("Cube") == 0) {
-			cube_vec.push_back(&transform);
-		}
-		else if (transform.name == "target") {
-			target = &transform;
-		}
-	}*/
+		// else if (transform.name.find("Cube") == 0) {
+		// 	cube_vec.push_back(&transform);
+		// }
+		// else if (transform.name == "target") {
+		// 	target = &transform;
+		// }
+	}
 	if (players.size() == 0) throw std::runtime_error("player not found.");
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
@@ -59,6 +59,7 @@ PlayMode::PlayMode(Client &client_) : client(client_) {
 	// std::cout << camera->transform->rotation.x << "," << camera->transform->rotation.y << "," << camera->transform->rotation.z << std::endl;
 }
 void PlayMode::levelup(int id, int count) {
+	std::cout << "level up " << count << std::endl;
 	for (int i = 0; i < count; i++) {
 		Mesh const& mesh = game_scene_meshes->lookup("Level");
 
@@ -83,6 +84,7 @@ void PlayMode::levelup(int id, int count) {
 }
 
 void PlayMode::leveldown(int id, int count) {
+	std::cout << "level down " << count << std::endl;
 	for (int i = 0; i < count; i++) {
 		if (players[id].level_drawables.size() > 0) {
 			scene.drawables.erase(players[id].level_drawables.back());
@@ -128,17 +130,17 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			mov_x = 0;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_e) { //defend
-			action = -1;
+			action = 3;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_SPACE) { //charge
 			space.downs += 1;
 			space.pressed = true;
-			action = -2;
+			action = 1;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_BACKSPACE) { //attack
 			backspace.downs += 1;
 			backspace.pressed = true;
-			action = players[myid].level_drawables.size();
+			action = 2;
 			return true;
 		}
 	} else if (evt.type == SDL_KEYUP) {
@@ -186,7 +188,7 @@ void PlayMode::update(float elapsed) {
 	//queue data for sending to server:
 	//TODO: send something that makes sense for your game
 	if (pressed) {
-		//send a five-byte message of type 'b':
+		//send a four-byte message of type 'b':
 		client.connections.back().send('b');
 		client.connections.back().send(mov_x);
 		client.connections.back().send(mov_y);
@@ -261,6 +263,7 @@ void PlayMode::update(float elapsed) {
 				if (type == 'm'){
 					// int numPlayer = std::stoi(server_message.substr(0, server_message.find("|")));
 					// server_message.erase(0, server_message.find("|")+1);
+					waiting = false;
 					max_player = std::stoi(extract_first(server_message, "|"));
 					for (int i=0; i<max_player; i++){
 						// std::string player_info = server_message.substr(0, server_message.find("|"));
@@ -272,14 +275,15 @@ void PlayMode::update(float elapsed) {
 						players[i].energy = std::stoi(extract_first(player_info, ","));
 						players[i].action = std::stoi(extract_first(player_info, ","));
 					}
+
+					for (int i=0; i<max_player; i++){
+						std::cout << players[i].x << " " << players[i].y << " " << players[i].energy << std::endl;
+					}
 				}
 			}
 		}
 	}, 0.0);
 
-	for (int i=0; i<max_player; i++){
-		std::cout << players[i].x << " " << players[i].y << " " << players[i].energy << std::endl;
-	}
 }
 
 std::string PlayMode::extract_first(std::string &message, std::string delimiter){

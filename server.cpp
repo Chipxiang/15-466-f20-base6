@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
 
 				} else { assert(evt == Connection::OnRecv);
 					//got data from client:
-					std::cout << "got bytes:\n" << hex_dump(c->recv_buffer); std::cout.flush();
+					// std::cout << "got bytes:\n" << hex_dump(c->recv_buffer); std::cout.flush();
 					if (players.size() == numPlayer){
 						//look up in players list:
 						auto f = players.find(c);
@@ -143,7 +143,7 @@ int main(int argc, char **argv) {
 				// }
 				player.x += player.mov_x;
 				player.y += player.mov_y;
-				if (player.action == -2)
+				if (player.action == 1)
 					player.energy ++;
 
 				// if (status_message != "") status_message += " | ";
@@ -152,10 +152,21 @@ int main(int argc, char **argv) {
 
 			for (auto &[c1, player1] : players) {
 				(void)c1; //work around "unused variable" warning on whatever version of g++ github actions is running
-				if (player1.alive && player1.action > 0){
-					(void)c1;
+				if (player1.alive){
 					for (auto &[c2, player2] : players) {
-						if (player1.id != player2.id && abs(player1.x-player2.x) <= player1.energy && abs(player1.y-player2.y) <= player1.energy && (player2.action <= 0 || player1.energy > player2.energy) && player2.action != -1){
+						if (player1.id != player2.id && player2.alive && player1.x == player2.x && player1.y == player2.y && player1.energy > player2.energy){
+							player2.alive = false;
+						}
+					}
+					
+				}
+			}
+			
+			for (auto &[c1, player1] : players) {
+				(void)c1; //work around "unused variable" warning on whatever version of g++ github actions is running
+				if (player1.alive && player1.action == 2){
+					for (auto &[c2, player2] : players) {
+						if (player1.id != player2.id && abs(player1.x-player2.x) <= player1.energy && abs(player1.y-player2.y) <= player1.energy && (player2.action != 2 || player1.energy > player2.energy) && player2.action != 3){
 							player2.alive = false;
 						}
 					}
@@ -164,12 +175,15 @@ int main(int argc, char **argv) {
 			}
 			//std::cout << status_message << std::endl; //DEBUG
 
+			
+
 			for (auto &[c, player] : players) {
 				(void)c; //work around "unused variable" warning on whatever version of g++ github actions is running
 				
-				if (status_message != "") status_message += "|";
+				
 				status_message += std::to_string(player.alive)+","+std::to_string(player.x) + "," + std::to_string(player.y) + "," +std::to_string(player.energy)+","+std::to_string(player.action);
-				if (player.action > 0)
+				status_message += "|";
+				if (player.action == 2)
 					player.energy = 0;
 				player.action = 0;
 				player.mov_x = 0;
@@ -186,6 +200,7 @@ int main(int argc, char **argv) {
 				c->send(uint8_t((msg.size() >> 8) % 256));
 				c->send(uint8_t(msg.size() % 256));
 				c->send_buffer.insert(c->send_buffer.end(), msg.begin(), msg.end());
+				std::cout << msg << std::endl;
 			}
 		} else {
 			for (auto &[c, player] : players) {
