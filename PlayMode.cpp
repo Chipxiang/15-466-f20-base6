@@ -42,7 +42,7 @@ PlayMode::PlayMode(Client& client_) : client(client_) {
 	int cube_count = 0;
 	for (it = scene.drawables.begin(); it != scene.drawables.end(); it++) {
 		if (it->transform->name.find("Player") == 0) {
-			Player player = { true, it, 0, it->transform, (int)it->transform->position.x / 2, (int)it->transform->position.y / 2 };
+			Player player = { it->transform, (int)it->transform->position.x / 2, (int)it->transform->position.y / 2, true, it, 0, 0};
 			players.push_back(player);
 		}
 		else if (it->transform->name.find("Cube") == 0) {
@@ -91,9 +91,12 @@ void PlayMode::leveldown(int id, int count) {
 	}
 }
 
-void PlayMode::make_attack(int id, int range) {
+void PlayMode::show_attack(int id, int range) {
 	for (int i = std::max(xmin, players[id].x - range); i <= players[id].x + range && i < xmax; i++) {
 		for (int j = std::max(ymin, players[id].y - range); j <= players[id].y + range && j < ymax; j++) {
+			if(cubes[i][j]->transform->position.z > -1){
+				continue;
+			}
 			Mesh const& mesh = game_scene_meshes->lookup("Attack");
 			cubes[i][j]->pipeline.type = mesh.type;
 			cubes[i][j]->pipeline.start = mesh.start;
@@ -102,6 +105,28 @@ void PlayMode::make_attack(int id, int range) {
 	}
 }
 
+void PlayMode::reset_attack(int id, int range) {
+	for (int i = std::max(xmin, players[id].x - range); i <= players[id].x + range && i < xmax; i++) {
+		for (int j = std::max(ymin, players[id].y - range); j <= players[id].y + range && j < ymax; j++) {
+			Mesh const& mesh = game_scene_meshes->lookup("Plat");
+			cubes[i][j]->pipeline.type = mesh.type;
+			cubes[i][j]->pipeline.start = mesh.start;
+			cubes[i][j]->pipeline.count = mesh.count;
+		}
+	}
+}
+
+void PlayMode::show_defend(int id) {
+	glm::vec3 offset = glm::vec3(0, 0, 1);
+	cubes[players[myid].x][players[myid].y]->transform->position += offset;
+	players[myid].transform->position += offset;
+}
+
+void PlayMode::reset_defend(int id) {
+	glm::vec3 offset = glm::vec3(0, 0, -1);
+	cubes[players[myid].x][players[myid].y]->transform->position += offset;
+	players[myid].transform->position += offset;
+}
 PlayMode::~PlayMode() {
 }
 
@@ -201,7 +226,6 @@ bool PlayMode::handle_event(SDL_Event const& evt, glm::uvec2 const& window_size)
 			return true;
 		}
 	}
-
 	return false;
 }
 
@@ -231,16 +255,18 @@ void PlayMode::update(float elapsed) {
 		players[myid].y--;
 		players[myid].transform->position.y -= unit;
 	}
-	if (space.downs) {
+	if (action == 3) {
+		show_defend(myid);
+	}
+	if (action == 1) {
 		levelup(myid, 1);
+	}
+	if (action == 2) {
+		show_attack(myid, players[myid].level);
 	}
 	if (backspace.downs) {
 		leveldown(myid, 1);
-		cubes[players[myid].x][players[myid].y]->transform->position += glm::vec3(0, 0, 3);
-		make_attack(myid, 1);
-	}
-	if (defend) {
-		
+		show_attack(myid, 1);
 	}
 	//reset button press counters:
 	left.downs = 0;
@@ -299,12 +325,12 @@ void PlayMode::update(float elapsed) {
 						players[i].is_alive = std::stoi(extract_first(player_info, ","));
 						players[i].x = std::stoi(extract_first(player_info, ","));
 						players[i].y = std::stoi(extract_first(player_info, ","));
-						players[i].energy = std::stoi(extract_first(player_info, ","));
+						players[i].level = std::stoi(extract_first(player_info, ","));
 						players[i].action = std::stoi(extract_first(player_info, ","));
 					}
 
 					for (int i=0; i<max_player; i++){
-						std::cout << players[i].x << " " << players[i].y << " " << players[i].energy << std::endl;
+						std::cout << players[i].x << " " << players[i].y << " " << players[i].level << std::endl;
 					}
 				}
 			}
