@@ -38,13 +38,20 @@ Load< Scene > game_scene(LoadTagDefault, []() -> Scene const* {
 
 PlayMode::PlayMode(Client &client_) : client(client_) {
 	scene = *game_scene;
+	/*std::list<Scene::Drawable>::iterator it;
 
-	for (auto& transform : scene.transforms) {
+	for (auto& drawable : scene.) {
 		if (transform.name.find("Player") == 0) {
 			Player player = { &transform, (int)transform.position.x / 2, (int)transform.position.y / 2 };
 			players.push_back(player);
 		}
-	}
+		else if (transform.name.find("Cube") == 0) {
+			cube_vec.push_back(&transform);
+		}
+		else if (transform.name == "target") {
+			target = &transform;
+		}
+	}*/
 	if (players.size() == 0) throw std::runtime_error("player not found.");
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
