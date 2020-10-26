@@ -16,6 +16,7 @@ struct PlayMode : Mode {
 	virtual bool handle_event(SDL_Event const&, glm::uvec2 const& window_size) override;
 	virtual void update(float elapsed) override;
 	virtual void draw(glm::uvec2 const& drawable_size) override;
+	std::string extract_first(std::string message, std::string delimiter);
 
 	Scene scene;
 
@@ -53,11 +54,11 @@ struct PlayMode : Mode {
 	Client& client;
 	Scene::Camera* camera = nullptr;
 
-
-	uint8_t defend;
-	uint8_t attack;
-	uint8_t charge;
-
+	int action = 0;
 	bool pressed = false;
+	int mov_x = 0;
+	int mov_y = 0;
+
+	bool waiting = true;
 
 };

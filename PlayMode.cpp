@@ -48,8 +48,8 @@ PlayMode::PlayMode(Client &client_) : client(client_) {
 	if (players.size() == 0) throw std::runtime_error("player not found.");
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
-	std::cout << camera->transform->position.x << "," << camera->transform->position.y << "," << camera->transform->position.z << std::endl;
-	std::cout << camera->transform->rotation.x << "," << camera->transform->rotation.y << "," << camera->transform->rotation.z << std::endl;
+	// std::cout << camera->transform->position.x << "," << camera->transform->position.y << "," << camera->transform->position.z << std::endl;
+	// std::cout << camera->transform->rotation.x << "," << camera->transform->rotation.y << "," << camera->transform->rotation.z << std::endl;
 }
 void PlayMode::levelup(int id, int count) {
 	for (int i = 0; i < count; i++) {
@@ -99,29 +99,39 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		} else if (evt.key.keysym.sym == SDLK_a) {
 			left.downs += 1;
 			left.pressed = true;
+			mov_x = -1;
+			mov_y = 0;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_d) {
 			right.downs += 1;
 			right.pressed = true;
+			mov_x = 1;
+			mov_y = 0;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_w) {
 			up.downs += 1;
 			up.pressed = true;
+			mov_y = 1;
+			mov_x = 0;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_s) {
 			down.downs += 1;
 			down.pressed = true;
+			mov_y = -1;
+			mov_x = 0;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_e) {
-			defend = 1;
+		} else if (evt.key.keysym.sym == SDLK_e) { //defend
+			action = -1;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_SPACE) {
+		} else if (evt.key.keysym.sym == SDLK_SPACE) { //charge
 			space.downs += 1;
 			space.pressed = true;
+			action = -2;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_BACKSPACE) {
+		} else if (evt.key.keysym.sym == SDLK_BACKSPACE) { //attack
 			backspace.downs += 1;
 			backspace.pressed = true;
+			action = players[myid].level_drawables.size();
 			return true;
 		}
 	} else if (evt.type == SDL_KEYUP) {
@@ -171,44 +181,40 @@ void PlayMode::update(float elapsed) {
 	if (pressed) {
 		//send a five-byte message of type 'b':
 		client.connections.back().send('b');
-		client.connections.back().send(left.downs);
-		client.connections.back().send(right.downs);
-		client.connections.back().send(down.downs);
-		client.connections.back().send(up.downs);
-		client.connections.back().send(space.downs);
-		client.connections.back().send(defend);
-		client.connections.back().send(backspace.downs);
+		client.connections.back().send(mov_x);
+		client.connections.back().send(mov_y);
+		client.connections.back().send(action);
 	}
-	if (left.downs && players[myid].x > xmin) {
-		players[myid].x--;
-		players[myid].transform->position.x -= unit;
-	}
-	if (right.downs && players[myid].x < xmax) {
-		players[myid].x++;
-		players[myid].transform->position.x += unit;
-	}
-	if (up.downs && players[myid].y < ymax) {
-		players[myid].y++;
-		players[myid].transform->position.y += unit;
-	}
-	if (down.downs && players[myid].y > ymin) {
-		players[myid].y--;
-		players[myid].transform->position.y -= unit;
-	}
-	if (space.downs) {
-		levelup(myid, 1);
-	}
-	if (backspace.downs) {
-		leveldown(myid, 1);
-	}
+	// if (left.downs && players[myid].x > xmin) {
+	// 	players[myid].x--;
+	// 	players[myid].transform->position.x -= unit;
+	// }
+	// if (right.downs && players[myid].x < xmax) {
+	// 	players[myid].x++;
+	// 	players[myid].transform->position.x += unit;
+	// }
+	// if (up.downs && players[myid].y < ymax) {
+	// 	players[myid].y++;
+	// 	players[myid].transform->position.y += unit;
+	// }
+	// if (down.downs && players[myid].y > ymin) {
+	// 	players[myid].y--;
+	// 	players[myid].transform->position.y -= unit;
+	// }
+	// if (space.downs) {
+	// 	levelup(myid, 1);
+	// }
+	// if (backspace.downs) {
+	// 	leveldown(myid, 1);
+	// }
 	//reset button press counters:
 	left.downs = 0;
 	right.downs = 0;
 	up.downs = 0;
 	down.downs = 0;
-	charge = 0;
-	defend = 0;
-	attack = 0;
+	mov_x = 0;
+	mov_y = 0;
+	action = 0;
 	pressed = false;
 
 	space.downs = 0;
@@ -221,12 +227,12 @@ void PlayMode::update(float elapsed) {
 			std::cout << "[" << c->socket << "] closed (!)" << std::endl;
 			throw std::runtime_error("Lost connection to server!");
 		} else { assert(event == Connection::OnRecv);
-			std::cout << "[" << c->socket << "] recv'd data. Current buffer:\n" << hex_dump(c->recv_buffer); std::cout.flush();
+			// std::cout << "[" << c->socket << "] recv'd data. Current buffer:\n" << hex_dump(c->recv_buffer); std::cout.flush();
 			//expecting message(s) like 'm' + 3-byte length + length bytes of text:
 			while (c->recv_buffer.size() >= 4) {
-				std::cout << "[" << c->socket << "] recv'd data. Current buffer:\n" << hex_dump(c->recv_buffer); std::cout.flush();
+				// std::cout << "[" << c->socket << "] recv'd data. Current buffer:\n" << hex_dump(c->recv_buffer); std::cout.flush();
 				char type = c->recv_buffer[0];
-				if (type != 'm') {
+				if (type != 'm' && type != 'w') {
 					throw std::runtime_error("Server sent unknown message type '" + std::to_string(type) + "'");
 				}
 				uint32_t size = (
@@ -238,9 +244,41 @@ void PlayMode::update(float elapsed) {
 
 				//and consume this part of the buffer:
 				c->recv_buffer.erase(c->recv_buffer.begin(), c->recv_buffer.begin() + 4 + size);
+				// myid = std::stoi(server_message.substr(0, server_message.find("|")));
+				// server_message.erase(0, server_message.find("|")+1);
+				myid = std::stoi(extract_first(server_message, "|"));
+				if (type == 'w'){
+					server_message = "Waiting for " + server_message + " more player(s).";
+				}
+				
+				if (type == 'm'){
+					// int numPlayer = std::stoi(server_message.substr(0, server_message.find("|")));
+					// server_message.erase(0, server_message.find("|")+1);
+					max_player = std::stoi(extract_first(server_message, "|"));
+					for (int i=0; i<max_player; i++){
+						// std::string player_info = server_message.substr(0, server_message.find("|"));
+						// server_message.erase(0, server_message.find("|")+1);
+						std::string player_info = extract_first(server_message, "|");
+						players[i].is_alive = std::stoi(extract_first(player_info, ","));
+						players[i].x = std::stoi(extract_first(player_info, ","));
+						players[i].y = std::stoi(extract_first(player_info, ","));
+						players[i].energy = std::stoi(extract_first(player_info, ","));
+						players[i].action = std::stoi(extract_first(player_info, ","));
+					}
+				}
 			}
 		}
 	}, 0.0);
+
+	for (int i=0; i<max_player; i++){
+		std::cout << players[i].x << " " << players[i].y << " " << players[i].energy << std::endl;
+	}
+}
+
+std::string PlayMode::extract_first(std::string &message, std::string delimiter){
+	std::string res = message.substr(0, message.find(delimiter));
+	message.erase(0, message.find(delimiter)+delimiter.size());
+	return res;
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
