@@ -38,18 +38,17 @@ Load< Scene > game_scene(LoadTagDefault, []() -> Scene const* {
 
 PlayMode::PlayMode(Client& client_) : client(client_) {
 	scene = *game_scene;
-	// std::list<Scene::Drawable>::iterator it;
-
-	for (auto& transform : scene.transforms) {
-		if (transform.name.find("Player") == 0) {
-			// Player player = { &transform, (int)transform.position.x / 2, (int)transform.position.y / 2 };
-			Player player = { &transform, 0, 0 };
+	std::list<Scene::Drawable>::iterator it;
+	int cube_count = 0;
+	for (it = scene.drawables.begin(); it != scene.drawables.end(); it++) {
+		if (it->transform->name.find("Player") == 0) {
+			Player player = { it->transform, (int)it->transform->position.x / 2, (int)it->transform->position.y / 2, true, it, 0, 0 };
 			players.push_back(player);
 		}
-		// else if (it->transform->name.find("Cube") == 0) {
-		// 	cubes[cube_count % 16][cube_count / 16] = it;
-		// 	cube_count++;
-		// }
+		else if (it->transform->name.find("Cube") == 0) {
+			cubes[cube_count % 16][cube_count / 16] = it;
+			cube_count++;
+		}
 	}
 	if (players.size() == 0) throw std::runtime_error("player not found.");
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
@@ -93,12 +92,14 @@ void PlayMode::leveldown(int id, int count) {
 }
 
 void PlayMode::show_attack(int id, int range) {
-	for (int i = std::max(xmin, players[id].x - range); i <= players[id].x + range && i < xmax; i++) {
-		for (int j = std::max(ymin, players[id].y - range); j <= players[id].y + range && j < ymax; j++) {
+	for (int i = std::max(xmin, players[id].x - range); i <= players[id].x + range && i <= xmax; i++) {
+		for (int j = std::max(ymin, players[id].y - range); j <= players[id].y + range && j <= ymax; j++) {
+			std::cout << i << "," << j << std::endl;
 			if(cubes[i][j]->transform->position.z > -1){
 				continue;
 			}
-			Mesh const& mesh = game_scene_meshes->lookup("Attack");
+			std::cout << "Attack" + std::to_string(id) << std::endl;
+			Mesh const& mesh = game_scene_meshes->lookup("Attack" + std::to_string(id));
 			cubes[i][j]->pipeline.type = mesh.type;
 			cubes[i][j]->pipeline.start = mesh.start;
 			cubes[i][j]->pipeline.count = mesh.count;
@@ -107,8 +108,8 @@ void PlayMode::show_attack(int id, int range) {
 }
 
 void PlayMode::reset_attack(int id, int range) {
-	for (int i = std::max(xmin, players[id].x - range); i <= players[id].x + range && i < xmax; i++) {
-		for (int j = std::max(ymin, players[id].y - range); j <= players[id].y + range && j < ymax; j++) {
+	for (int i = std::max(xmin, players[id].x - range); i <= players[id].x + range && i <= xmax; i++) {
+		for (int j = std::max(ymin, players[id].y - range); j <= players[id].y + range && j <= ymax; j++) {
 			Mesh const& mesh = game_scene_meshes->lookup("Plat");
 			cubes[i][j]->pipeline.type = mesh.type;
 			cubes[i][j]->pipeline.start = mesh.start;
