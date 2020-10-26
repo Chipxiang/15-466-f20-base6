@@ -57,10 +57,9 @@ PlayMode::PlayMode(Client& client_) : client(client_) {
 	// std::cout << camera->transform->rotation.x << "," << camera->transform->rotation.y << "," << camera->transform->rotation.z << std::endl;
 }
 void PlayMode::levelup(int id, int count) {
-	std::cout << "level up " << count << std::endl;
 	for (int i = 0; i < count; i++) {
+		players[id].level++;
 		Mesh const& mesh = game_scene_meshes->lookup("Level");
-
 		// create new transform
 		scene.transforms.emplace_back();
 		Scene::Transform* t = &scene.transforms.back();
@@ -330,7 +329,7 @@ void PlayMode::update(float elapsed) {
 						// players[i].energy = std::stoi(extract_first(player_info, ","));
 						players[i].action = std::stoi(extract_first(player_info, ","));
 					}
-
+					update_level();
 					for (int i=0; i<max_player; i++){
 						std::cout << players[i].x << " " << players[i].y << " " << players[i].level << std::endl;
 					}
@@ -338,7 +337,15 @@ void PlayMode::update(float elapsed) {
 			}
 		}
 	}, 0.0);
+}
 
+void PlayMode::update_level() {
+	for (int i = 0; i < max_player; i++) {
+		if (i == myid) continue;
+		if (players[i].action == 1) {
+			levelup(i, 1);
+		}
+	}
 }
 
 std::string PlayMode::extract_first(std::string &message, std::string delimiter){

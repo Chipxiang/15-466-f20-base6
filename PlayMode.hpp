@@ -34,7 +34,7 @@ struct PlayMode : Mode {
 	int xmin = 0;
 	int ymax = 15;
 	int ymin = 0;
-	int max_player = 1;
+	int max_player = 4;
 	int myid = 0;
 	int turn = -1;
 
@@ -58,7 +58,7 @@ struct PlayMode : Mode {
 	void reset_attack(int id, int range);
 	void show_defend(int id);
 	void reset_defend(int id);
-
+	void update_level();
 	std::vector<Player> players;
 
 	//last message from server:
