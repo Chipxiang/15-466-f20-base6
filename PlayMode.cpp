@@ -245,7 +245,7 @@ void PlayMode::update(float elapsed) {
 	pointer->position.y = players[myid].transform->position.y;
 	pointer->position.z += pointer_sign * elapsed;
 
-	if (pointer->position.z < pointer_min || pointer->position.z > pointer_max)
+	if (pointer->position.z <= pointer_min || pointer->position.z >= pointer_max)
 		pointer_sign = -pointer_sign;
 
 	// update timers
@@ -328,7 +328,7 @@ void PlayMode::update(float elapsed) {
 				// server_message.erase(0, server_message.find("|")+1);
 				myid = std::stoi(extract_first(server_message, "|"));
 				camera->transform->position = players[myid].transform->position + camera_offset;
-				pointer->position = players[myid].transform->make_local_to_world() * glm::vec4(0.0f, 0.0f, 5.0f, 0.0f) + players[myid].transform->position;
+				pointer->position = players[myid].transform->make_local_to_world() * glm::vec4(0.0f, 0.0f, 4.0f, 0.0f) + players[myid].transform->position;
 
 				if (type == 'w'){
 					server_message = "Waiting for " + server_message + " more player(s).";
