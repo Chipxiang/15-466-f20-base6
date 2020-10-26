@@ -38,26 +38,18 @@ Load< Scene > game_scene(LoadTagDefault, []() -> Scene const* {
 
 PlayMode::PlayMode(Client& client_) : client(client_) {
 	scene = *game_scene;
-<<<<<<< HEAD
 	// std::list<Scene::Drawable>::iterator it;
 
 	for (auto& transform : scene.transforms) {
 		if (transform.name.find("Player") == 0) {
 			// Player player = { &transform, (int)transform.position.x / 2, (int)transform.position.y / 2 };
 			Player player = { &transform, 0, 0 };
-=======
-	std::list<Scene::Drawable>::iterator it;
-	int cube_count = 0;
-	for (it = scene.drawables.begin(); it != scene.drawables.end(); it++) {
-		if (it->transform->name.find("Player") == 0) {
-			Player player = { it->transform, (int)it->transform->position.x / 2, (int)it->transform->position.y / 2, true, it, 0, 0};
->>>>>>> 97d8940f85a9a95d780dfb884e2ef3dd41298ed7
 			players.push_back(player);
 		}
-		else if (it->transform->name.find("Cube") == 0) {
-			cubes[cube_count % 16][cube_count / 16] = it;
-			cube_count++;
-		}
+		// else if (it->transform->name.find("Cube") == 0) {
+		// 	cubes[cube_count % 16][cube_count / 16] = it;
+		// 	cube_count++;
+		// }
 	}
 	if (players.size() == 0) throw std::runtime_error("player not found.");
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));

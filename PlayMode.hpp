@@ -45,7 +45,7 @@ struct PlayMode : Mode {
 		bool is_alive = true;
 		std::list<Scene::Drawable>::iterator drawable;
 		int action = 0; // 0 for nothing, 1 for charge, 2 for attack, 3 for defend
-		int energy = 0;
+		int level = 0;
 		int mov_x = 0;
 		int mov_y = 0;
 		std::vector<std::list<Scene::Drawable>::iterator> level_drawables;
