@@ -36,25 +36,27 @@ int main(int argc, char **argv) {
 	struct PlayerInfo {
 		PlayerInfo() {
 			static uint32_t next_player_id = 1;
-			name = "Player" + std::to_string(next_player_id);
+			// name = "Player" + std::to_string(next_player_id);
+			id = std::to_string(next_player_id);
 			x = next_player_id;
 			y = next_player_id;
 			next_player_id += 1;
 			alive = true;
+			energy = 0;
+			action = 0;
+			mov_x = 0;
+			mov_y = 0;
 		}
-		std::string name;
+		std::string id;
 
-		int left_presses = 0;
-		int right_presses = 0;
-		int up_presses = 0;
-		int down_presses = 0;
-		bool defend = false;
-		int attack = 0;
+		int action;
+		int mov_x;
+		int mov_y;
 
-		int x = 0;
-		int y = 0;
-		int energy = 0;
-		bool alive = true;
+		int x;
+		int y;
+		int energy;
+		bool alive;
 
 	};
 	std::unordered_map< Connection *, PlayerInfo > players;
@@ -88,7 +90,7 @@ int main(int argc, char **argv) {
 
 				} else { assert(evt == Connection::OnRecv);
 					//got data from client:
-					std::cout << "got bytes:\n" << hex_dump(c->recv_buffer); std::cout.flush();
+					// std::cout << "got bytes:\n" << hex_dump(c->recv_buffer); std::cout.flush();
 					if (players.size() == numPlayer){
 						//look up in players list:
 						auto f = players.find(c);
@@ -97,7 +99,7 @@ int main(int argc, char **argv) {
 
 						//handle messages from client:
 						//TODO: update for the sorts of messages your clients send
-						while (c->recv_buffer.size() >= 8) {
+						while (c->recv_buffer.size() >= 4) {
 							//expecting five-byte messages 'b' (left count) (right count) (down count) (up count)
 							char type = c->recv_buffer[0];
 							if (type != 'b') {
@@ -107,15 +109,11 @@ int main(int argc, char **argv) {
 								return;
 							}
 
-							player.left_presses = c->recv_buffer[1];
-							player.right_presses = c->recv_buffer[2];
-							player.down_presses = c->recv_buffer[3];
-							player.up_presses = c->recv_buffer[4];
-							player.energy += c->recv_buffer[5];
-							player.defend = (c->recv_buffer[6] == 1);
-							player.attack = c->recv_buffer[5];
+							player.mov_x = c->recv_buffer[1];
+							player.mov_y = c->recv_buffer[2];
+							player.action = c->recv_buffer[3];
 
-							c->recv_buffer.erase(c->recv_buffer.begin(), c->recv_buffer.begin() + 8);
+							c->recv_buffer.erase(c->recv_buffer.begin(), c->recv_buffer.begin() + 4);
 						}
 					}
 
@@ -131,18 +129,22 @@ int main(int argc, char **argv) {
 		
 			for (auto &[c, player] : players) {
 				(void)c; //work around "unused variable" warning on whatever version of g++ github actions is running
-				for (; player.left_presses > 0; --player.left_presses) {
-					player.x -= 1;
-				}
-				for (; player.right_presses > 0; --player.right_presses) {
-					player.x += 1;
-				}
-				for (; player.down_presses > 0; --player.down_presses) {
-					player.y -= 1;
-				}
-				for (; player.up_presses > 0; --player.up_presses) {
-					player.y += 1;
-				}
+				// for (; player.left_presses > 0; --player.left_presses) {
+				// 	player.x -= 1;
+				// }
+				// for (; player.right_presses > 0; --player.right_presses) {
+				// 	player.x += 1;
+				// }
+				// for (; player.down_presses > 0; --player.down_presses) {
+				// 	player.y -= 1;
+				// }
+				// for (; player.up_presses > 0; --player.up_presses) {
+				// 	player.y += 1;
+				// }
+				player.x += player.mov_x;
+				player.y += player.mov_y;
+				if (player.action == 1)
+					player.energy ++;
 
 				// if (status_message != "") status_message += " | ";
 				// status_message += std::to_string(player.x) + ", " + std::to_string(player.y) + " (" + player.name + ")";
@@ -150,39 +152,69 @@ int main(int argc, char **argv) {
 
 			for (auto &[c1, player1] : players) {
 				(void)c1; //work around "unused variable" warning on whatever version of g++ github actions is running
-				if (player1.alive && player1.attack > 0){
-					(void)c1;
+				if (player1.alive){
 					for (auto &[c2, player2] : players) {
-						if (player1.name != player2.name && abs(player1.x-player2.x) <= player1.attack && abs(player1.y-player2.y) <= player1.attack && player1.attack > player2.attack && player2.defend == 0){
+						if (player1.id != player2.id && player2.alive && player1.x == player2.x && player1.y == player2.y && player1.energy > player2.energy){
 							player2.alive = false;
 						}
 					}
+					
 				}
-				
+			}
 
-				
+			for (auto &[c1, player1] : players) {
+				(void)c1; //work around "unused variable" warning on whatever version of g++ github actions is running
+				if (player1.alive && player1.action == 2){
+					for (auto &[c2, player2] : players) {
+						if (player1.id != player2.id && abs(player1.x-player2.x) <= player1.energy && abs(player1.y-player2.y) <= player1.energy && (player2.action != 2 || player1.energy > player2.energy) && player2.action != 3){
+							player2.alive = false;
+						}
+					}
+					
+				}
 			}
 			//std::cout << status_message << std::endl; //DEBUG
 
+			
+
 			for (auto &[c, player] : players) {
 				(void)c; //work around "unused variable" warning on whatever version of g++ github actions is running
-				if (status_message != "") status_message += "|";
-				status_message += player.name + "," +std::to_string(player.alive)+","+std::to_string(player.x) + "," + std::to_string(player.y) + "," +std::to_string(player.energy)+","+std::to_string(player.attack)+","+std::to_string(player.defend);
+				
+				
+				status_message += std::to_string(player.alive)+","+std::to_string(player.x) + "," + std::to_string(player.y) + "," +std::to_string(player.energy)+","+std::to_string(player.action);
+				status_message += "|";
+				if (player.action == 2)
+					player.energy = 0;
+				player.action = 0;
+				player.mov_x = 0;
+				player.mov_y = 0;
 			}
 			//send updated game state to all clients
 			//TODO: update for your game state
+			for (auto &[c, player] : players) {
+				(void)player; //work around "unused variable" warning on whatever g++ github actions uses
+				//send an update starting with 'm', a 24-bit size, and a blob of text:
+				c->send('m');
+				std::string msg = player.id+"|"+std::to_string(numPlayer)+"|"+status_message;
+				c->send(uint8_t(msg.size() >> 16));
+				c->send(uint8_t((msg.size() >> 8) % 256));
+				c->send(uint8_t(msg.size() % 256));
+				c->send_buffer.insert(c->send_buffer.end(), msg.begin(), msg.end());
+				std::cout << msg << std::endl;
+			}
 		} else {
-			status_message = "waiting for "+std::to_string(numPlayer-players.size())+" more player(s) to start.";
+			for (auto &[c, player] : players) {
+				(void)player; //work around "unused variable" warning on whatever g++ github actions uses
+				//send an update starting with 'm', a 24-bit size, and a blob of text:
+				std::string msg = player.id + "|" + std::to_string(numPlayer-players.size());
+				c->send('w');
+				c->send(uint8_t(msg.size() >> 16));
+				c->send(uint8_t((msg.size() >> 8) % 256));
+				c->send(uint8_t(msg.size() % 256));
+				c->send_buffer.insert(c->send_buffer.end(), msg.begin(), msg.end());
+			}
 		}
-		for (auto &[c, player] : players) {
-			(void)player; //work around "unused variable" warning on whatever g++ github actions uses
-			//send an update starting with 'm', a 24-bit size, and a blob of text:
-			c->send('m');
-			c->send(uint8_t(status_message.size() >> 16));
-			c->send(uint8_t((status_message.size() >> 8) % 256));
-			c->send(uint8_t(status_message.size() % 256));
-			c->send_buffer.insert(c->send_buffer.end(), status_message.begin(), status_message.end());
-		}
+		
 	}
 
 

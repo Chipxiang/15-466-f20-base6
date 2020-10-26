@@ -16,6 +16,7 @@ struct PlayMode : Mode {
 	virtual bool handle_event(SDL_Event const&, glm::uvec2 const& window_size) override;
 	virtual void update(float elapsed) override;
 	virtual void draw(glm::uvec2 const& drawable_size) override;
+	std::string extract_first(std::string &message, std::string delimiter);
 
 	Scene scene;
 
@@ -38,12 +39,13 @@ struct PlayMode : Mode {
 	int turn = -1;
 
 	struct Player {
-		bool is_alive = true;
-		std::list<Scene::Drawable>::iterator drawable;
-		int action; // -1 for defend, 0 for nothing, >0 for attack range
 		Scene::Transform* transform;
 		int x;
 		int y;
+		bool is_alive = true;
+		std::list<Scene::Drawable>::iterator drawable;
+		int action = 0; // 0 for nothing, 1 for charge, 2 for attack, 3 for defend
+		int energy = 0;
 		std::vector<std::list<Scene::Drawable>::iterator> level_drawables;
 	};
 	std::list<Scene::Drawable>::iterator cubes[16][16] = { {} };
@@ -61,11 +63,11 @@ struct PlayMode : Mode {
 	Client& client;
 	Scene::Camera* camera = nullptr;
 
-
-	int defend;
-	int attack;
-	int charge;
-
+	int8_t action = 0; // 0 for nothing, 1 for charge, 2 for attack, 3 for defend
 	bool pressed = false;
+	int8_t mov_x = 0;
+	int8_t mov_y = 0;
+
+	bool waiting = true;
 
 };
