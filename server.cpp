@@ -44,16 +44,16 @@ int main(int argc, char **argv) {
 		}
 		std::string name;
 
-		uint32_t left_presses = 0;
-		uint32_t right_presses = 0;
-		uint32_t up_presses = 0;
-		uint32_t down_presses = 0;
+		int left_presses = 0;
+		int right_presses = 0;
+		int up_presses = 0;
+		int down_presses = 0;
 		bool defend = false;
-		uint32_t attack = 0;
+		int attack = 0;
 
-		int32_t x = 0;
-		int32_t y = 0;
-		uint32_t energy = 0;
+		int x = 0;
+		int y = 0;
+		int energy = 0;
 		bool alive = true;
 
 	};
