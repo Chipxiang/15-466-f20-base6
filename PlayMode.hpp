@@ -36,7 +36,12 @@ struct PlayMode : Mode {
 	int ymin = 0;
 	int max_player = 1;
 	int myid = 0;
+	int turn = -1;
+
 	struct Player {
+		bool is_alive = true;
+		std::list<Scene::Drawable>::iterator drawable;
+		int action; // -1 for defend, 0 for nothing, >0 for attack range
 		Scene::Transform* transform;
 		int x;
 		int y;
