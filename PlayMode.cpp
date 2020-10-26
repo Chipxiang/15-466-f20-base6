@@ -36,22 +36,28 @@ Load< Scene > game_scene(LoadTagDefault, []() -> Scene const* {
 		});
 	});
 
-PlayMode::PlayMode(Client &client_) : client(client_) {
+PlayMode::PlayMode(Client& client_) : client(client_) {
 	scene = *game_scene;
+<<<<<<< HEAD
 	// std::list<Scene::Drawable>::iterator it;
 
 	for (auto& transform : scene.transforms) {
 		if (transform.name.find("Player") == 0) {
 			// Player player = { &transform, (int)transform.position.x / 2, (int)transform.position.y / 2 };
 			Player player = { &transform, 0, 0 };
+=======
+	std::list<Scene::Drawable>::iterator it;
+	int cube_count = 0;
+	for (it = scene.drawables.begin(); it != scene.drawables.end(); it++) {
+		if (it->transform->name.find("Player") == 0) {
+			Player player = { it->transform, (int)it->transform->position.x / 2, (int)it->transform->position.y / 2, true, it, 0, 0};
+>>>>>>> 97d8940f85a9a95d780dfb884e2ef3dd41298ed7
 			players.push_back(player);
 		}
-		// else if (transform.name.find("Cube") == 0) {
-		// 	cube_vec.push_back(&transform);
-		// }
-		// else if (transform.name == "target") {
-		// 	target = &transform;
-		// }
+		else if (it->transform->name.find("Cube") == 0) {
+			cubes[cube_count % 16][cube_count / 16] = it;
+			cube_count++;
+		}
 	}
 	if (players.size() == 0) throw std::runtime_error("player not found.");
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
@@ -94,37 +100,78 @@ void PlayMode::leveldown(int id, int count) {
 	}
 }
 
+void PlayMode::show_attack(int id, int range) {
+	for (int i = std::max(xmin, players[id].x - range); i <= players[id].x + range && i < xmax; i++) {
+		for (int j = std::max(ymin, players[id].y - range); j <= players[id].y + range && j < ymax; j++) {
+			if(cubes[i][j]->transform->position.z > -1){
+				continue;
+			}
+			Mesh const& mesh = game_scene_meshes->lookup("Attack");
+			cubes[i][j]->pipeline.type = mesh.type;
+			cubes[i][j]->pipeline.start = mesh.start;
+			cubes[i][j]->pipeline.count = mesh.count;
+		}
+	}
+}
+
+void PlayMode::reset_attack(int id, int range) {
+	for (int i = std::max(xmin, players[id].x - range); i <= players[id].x + range && i < xmax; i++) {
+		for (int j = std::max(ymin, players[id].y - range); j <= players[id].y + range && j < ymax; j++) {
+			Mesh const& mesh = game_scene_meshes->lookup("Plat");
+			cubes[i][j]->pipeline.type = mesh.type;
+			cubes[i][j]->pipeline.start = mesh.start;
+			cubes[i][j]->pipeline.count = mesh.count;
+		}
+	}
+}
+
+void PlayMode::show_defend(int id) {
+	glm::vec3 offset = glm::vec3(0, 0, 1);
+	cubes[players[myid].x][players[myid].y]->transform->position += offset;
+	players[myid].transform->position += offset;
+}
+
+void PlayMode::reset_defend(int id) {
+	glm::vec3 offset = glm::vec3(0, 0, -1);
+	cubes[players[myid].x][players[myid].y]->transform->position += offset;
+	players[myid].transform->position += offset;
+}
 PlayMode::~PlayMode() {
 }
 
-bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
+bool PlayMode::handle_event(SDL_Event const& evt, glm::uvec2 const& window_size) {
 	if (evt.type == SDL_KEYDOWN) {
 		if (pressed) return false;
 		pressed = true;
 		if (evt.key.repeat) {
 			//ignore repeats
-		} else if (evt.key.keysym.sym == SDLK_ESCAPE) {
+		}
+		else if (evt.key.keysym.sym == SDLK_ESCAPE) {
 			SDL_SetRelativeMouseMode(SDL_FALSE);
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_a) {
+		}
+		else if (evt.key.keysym.sym == SDLK_a) {
 			left.downs += 1;
 			left.pressed = true;
 			mov_x = -1;
 			mov_y = 0;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_d) {
+		}
+		else if (evt.key.keysym.sym == SDLK_d) {
 			right.downs += 1;
 			right.pressed = true;
 			mov_x = 1;
 			mov_y = 0;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_w) {
+		}
+		else if (evt.key.keysym.sym == SDLK_w) {
 			up.downs += 1;
 			up.pressed = true;
 			mov_y = 1;
 			mov_x = 0;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_s) {
+		}
+		else if (evt.key.keysym.sym == SDLK_s) {
 			down.downs += 1;
 			down.pressed = true;
 			mov_y = -1;
@@ -144,20 +191,25 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			action = 2;
 			return true;
 		}
-	} else if (evt.type == SDL_KEYUP) {
+	}
+	else if (evt.type == SDL_KEYUP) {
 		if (evt.key.keysym.sym == SDLK_a) {
 			left.pressed = false;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_d) {
+		}
+		else if (evt.key.keysym.sym == SDLK_d) {
 			right.pressed = false;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_w) {
+		}
+		else if (evt.key.keysym.sym == SDLK_w) {
 			up.pressed = false;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_s) {
+		}
+		else if (evt.key.keysym.sym == SDLK_s) {
 			down.pressed = false;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_SPACE) {
+		}
+		else if (evt.key.keysym.sym == SDLK_SPACE) {
 			space.pressed = false;
 			return true;
 		}
@@ -165,12 +217,14 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			backspace.pressed = false;
 			return true;
 		}
-	}else if (evt.type == SDL_MOUSEBUTTONDOWN) {
+	}
+	else if (evt.type == SDL_MOUSEBUTTONDOWN) {
 		if (SDL_GetRelativeMouseMode() == SDL_FALSE) {
 			SDL_SetRelativeMouseMode(SDL_TRUE);
 			return true;
 		}
-	} else if (evt.type == SDL_MOUSEMOTION) {
+	}
+	else if (evt.type == SDL_MOUSEMOTION) {
 		if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
 			glm::vec2 motion = glm::vec2(
 				evt.motion.xrel / float(window_size.y),
@@ -181,7 +235,6 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			return true;
 		}
 	}
-
 	return false;
 }
 
@@ -195,28 +248,35 @@ void PlayMode::update(float elapsed) {
 		client.connections.back().send(mov_y);
 		client.connections.back().send(action);
 	}
-	// if (left.downs && players[myid].x > xmin) {
-	// 	players[myid].x--;
-	// 	players[myid].transform->position.x -= unit;
-	// }
-	// if (right.downs && players[myid].x < xmax) {
-	// 	players[myid].x++;
-	// 	players[myid].transform->position.x += unit;
-	// }
-	// if (up.downs && players[myid].y < ymax) {
-	// 	players[myid].y++;
-	// 	players[myid].transform->position.y += unit;
-	// }
-	// if (down.downs && players[myid].y > ymin) {
-	// 	players[myid].y--;
-	// 	players[myid].transform->position.y -= unit;
-	// }
-	// if (space.downs) {
-	// 	levelup(myid, 1);
-	// }
-	// if (backspace.downs) {
-	// 	leveldown(myid, 1);
-	// }
+	if (left.downs && players[myid].x > xmin) {
+		players[myid].x--;
+		players[myid].transform->position.x -= unit;
+	}
+	if (right.downs && players[myid].x < xmax) {
+		players[myid].x++;
+		players[myid].transform->position.x += unit;
+	}
+	if (up.downs && players[myid].y < ymax) {
+		players[myid].y++;
+		players[myid].transform->position.y += unit;
+	}
+	if (down.downs && players[myid].y > ymin) {
+		players[myid].y--;
+		players[myid].transform->position.y -= unit;
+	}
+	if (action == 3) {
+		show_defend(myid);
+	}
+	if (action == 1) {
+		levelup(myid, 1);
+	}
+	if (action == 2) {
+		show_attack(myid, players[myid].level);
+	}
+	if (backspace.downs) {
+		leveldown(myid, 1);
+		show_attack(myid, 1);
+	}
 	//reset button press counters:
 	left.downs = 0;
 	right.downs = 0;
@@ -230,10 +290,11 @@ void PlayMode::update(float elapsed) {
 	space.downs = 0;
 	backspace.downs = 0;
 	//send/receive data:
-	client.poll([this](Connection *c, Connection::Event event){
+	client.poll([this](Connection* c, Connection::Event event) {
 		if (event == Connection::OnOpen) {
 			std::cout << "[" << c->socket << "] opened" << std::endl;
-		} else if (event == Connection::OnClose) {
+		}
+		else if (event == Connection::OnClose) {
 			std::cout << "[" << c->socket << "] closed (!)" << std::endl;
 			throw std::runtime_error("Lost connection to server!");
 		} else { assert(event == Connection::OnRecv);
@@ -247,7 +308,7 @@ void PlayMode::update(float elapsed) {
 				}
 				uint32_t size = (
 					(uint32_t(c->recv_buffer[1]) << 16) | (uint32_t(c->recv_buffer[2]) << 8) | (uint32_t(c->recv_buffer[3]))
-				);
+					);
 				if (c->recv_buffer.size() < 4 + size) break; //if whole message isn't here, can't process
 				//whole message *is* here, so set current server message:
 				server_message = std::string(c->recv_buffer.begin() + 4, c->recv_buffer.begin() + 4 + size);
@@ -278,7 +339,7 @@ void PlayMode::update(float elapsed) {
 					}
 
 					for (int i=0; i<max_player; i++){
-						std::cout << players[i].x << " " << players[i].y << " " << players[i].energy << std::endl;
+						std::cout << players[i].x << " " << players[i].y << " " << players[i].level << std::endl;
 					}
 				}
 			}
@@ -293,7 +354,7 @@ std::string PlayMode::extract_first(std::string &message, std::string delimiter)
 	return res;
 }
 
-void PlayMode::draw(glm::uvec2 const &drawable_size) {
+void PlayMode::draw(glm::uvec2 const& drawable_size) {
 	camera->aspect = float(drawable_size.x) / float(drawable_size.y);
 
 	//set up light type and position for lit_color_texture_program:
@@ -301,7 +362,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 	glUseProgram(lit_color_texture_program->program);
 	glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
-	glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f,-1.0f)));
+	glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f, -1.0f)));
 	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 0.95f)));
 	glUseProgram(0);
 
@@ -323,7 +384,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			0.0f, 0.0f, 0.0f, 1.0f
 		));
 
-		auto draw_text = [&](glm::vec2 const &at, std::string const &text, float H) {
+		auto draw_text = [&](glm::vec2 const& at, std::string const& text, float H) {
 			lines.draw_text(text,
 				glm::vec3(at.x, at.y, 0.0),
 				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
@@ -337,7 +398,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 		draw_text(glm::vec2(-aspect + 0.1f, 0.0f), server_message, 0.09f);
 
-		draw_text(glm::vec2(-aspect + 0.1f,-0.9f), "(press WASD to change your total)", 0.09f);
+		draw_text(glm::vec2(-aspect + 0.1f, -0.9f), "(press WASD to change your total)", 0.09f);
 	}
 	GL_ERRORS();
 }

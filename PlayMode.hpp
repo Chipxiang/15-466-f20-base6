@@ -50,8 +50,14 @@ struct PlayMode : Mode {
 		int mov_y = 0;
 		std::vector<std::list<Scene::Drawable>::iterator> level_drawables;
 	};
+	std::list<Scene::Drawable>::iterator cubes[16][16] = { {} };
+
 	void levelup(int id, int count);
 	void leveldown(int id, int count);
+	void show_attack(int id, int range);
+	void reset_attack(int id, int range);
+	void show_defend(int id);
+	void reset_defend(int id);
 
 	std::vector<Player> players;
 
