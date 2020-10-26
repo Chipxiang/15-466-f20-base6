@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
 
 	Server server(argv[1]);
 
-	int numPlayer = 2;
+	size_t numPlayer = 2;
 	//------------ main loop ------------
 	constexpr float ServerTick = 10.0f; //TODO: set a server tick that makes sense for your game
 
@@ -154,6 +154,7 @@ int main(int argc, char **argv) {
 				(void)c1; //work around "unused variable" warning on whatever version of g++ github actions is running
 				if (player1.alive){
 					for (auto &[c2, player2] : players) {
+						(void)c2;
 						if (player1.id != player2.id && player2.alive && player1.x == player2.x && player1.y == player2.y && player1.energy > player2.energy){
 							player2.alive = false;
 						}
@@ -166,6 +167,7 @@ int main(int argc, char **argv) {
 				(void)c1; //work around "unused variable" warning on whatever version of g++ github actions is running
 				if (player1.alive && player1.action == 2){
 					for (auto &[c2, player2] : players) {
+						(void)c2;
 						if (player1.id != player2.id && abs(player1.x-player2.x) <= player1.energy && abs(player1.y-player2.y) <= player1.energy && (player2.action != 2 || player1.energy > player2.energy) && player2.action != 3){
 							player2.alive = false;
 						}
