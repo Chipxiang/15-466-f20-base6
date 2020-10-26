@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
 	//per-client state:
 	struct PlayerInfo {
 		PlayerInfo() {
-			static uint32_t next_player_id = 1;
+			static uint32_t next_player_id = 0;
 			// name = "Player" + std::to_string(next_player_id);
 			id = std::to_string(next_player_id);
 			x = next_player_id;
@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
 
 			//update current game state
 			//TODO: replace with *your* game state update
-		
+			
 			for (auto &[c, player] : players) {
 				(void)c; //work around "unused variable" warning on whatever version of g++ github actions is running
 				// for (; player.left_presses > 0; --player.left_presses) {
@@ -176,12 +176,12 @@ int main(int argc, char **argv) {
 			//std::cout << status_message << std::endl; //DEBUG
 
 			
-
+			
 			for (auto &[c, player] : players) {
 				(void)c; //work around "unused variable" warning on whatever version of g++ github actions is running
 				
 				
-				status_message += std::to_string(player.alive)+","+std::to_string(player.x) + "," + std::to_string(player.y) + "," +std::to_string(player.energy)+","+std::to_string(player.action);
+				status_message += std::to_string(player.mov_x) + "," + std::to_string(player.mov_y) + "," +std::to_string(player.action);
 				status_message += "|";
 				if (player.action == 2)
 					player.energy = 0;

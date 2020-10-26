@@ -42,7 +42,8 @@ PlayMode::PlayMode(Client &client_) : client(client_) {
 
 	for (auto& transform : scene.transforms) {
 		if (transform.name.find("Player") == 0) {
-			Player player = { &transform, (int)transform.position.x / 2, (int)transform.position.y / 2 };
+			// Player player = { &transform, (int)transform.position.x / 2, (int)transform.position.y / 2 };
+			Player player = { &transform, 0, 0 };
 			players.push_back(player);
 		}
 		// else if (transform.name.find("Cube") == 0) {
@@ -269,10 +270,10 @@ void PlayMode::update(float elapsed) {
 						// std::string player_info = server_message.substr(0, server_message.find("|"));
 						// server_message.erase(0, server_message.find("|")+1);
 						std::string player_info = extract_first(server_message, "|");
-						players[i].is_alive = std::stoi(extract_first(player_info, ","));
-						players[i].x = std::stoi(extract_first(player_info, ","));
-						players[i].y = std::stoi(extract_first(player_info, ","));
-						players[i].energy = std::stoi(extract_first(player_info, ","));
+						// players[i].is_alive = std::stoi(extract_first(player_info, ","));
+						players[i].mov_x = std::stoi(extract_first(player_info, ","));
+						players[i].mov_y = std::stoi(extract_first(player_info, ","));
+						// players[i].energy = std::stoi(extract_first(player_info, ","));
 						players[i].action = std::stoi(extract_first(player_info, ","));
 					}
 
