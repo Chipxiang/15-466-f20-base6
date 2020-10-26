@@ -49,12 +49,18 @@ PlayMode::PlayMode(Client& client_) : client(client_) {
 			cubes[cube_count % 16][cube_count / 16] = it;
 			cube_count++;
 		}
+		else if (it->transform->name == "Pointer") {
+			pointer = it->transform;
+		}
 	}
 	if (players.size() == 0) throw std::runtime_error("player not found.");
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
 	// std::cout << camera->transform->position.x << "," << camera->transform->position.y << "," << camera->transform->position.z << std::endl;
 	// std::cout << camera->transform->rotation.x << "," << camera->transform->rotation.y << "," << camera->transform->rotation.z << std::endl;
+}
+void PlayMode::camera_focus(int id) {
+	camera->transform->position = players[id].transform->position + camera_offset;
 }
 void PlayMode::levelup(int id, int count) {
 	for (int i = 0; i < count; i++) {
@@ -233,6 +239,17 @@ bool PlayMode::handle_event(SDL_Event const& evt, glm::uvec2 const& window_size)
 void PlayMode::update(float elapsed) {
 	//queue data for sending to server:
 	//TODO: send something that makes sense for your game
+
+	// update pointer position
+	pointer->position.x = players[myid].transform->position.x;
+	pointer->position.y = players[myid].transform->position.y;
+	pointer->position.z += pointer_sign * elapsed;
+
+	if (pointer->position.z < pointer_min || pointer->position.z > pointer_max)
+		pointer_sign = -pointer_sign;
+
+	// update timers
+	turn_timer -= elapsed;
 	if (pressed) {
 		//send a four-byte message of type 'b':
 		client.connections.back().send('b');
@@ -310,6 +327,9 @@ void PlayMode::update(float elapsed) {
 				// myid = std::stoi(server_message.substr(0, server_message.find("|")));
 				// server_message.erase(0, server_message.find("|")+1);
 				myid = std::stoi(extract_first(server_message, "|"));
+				camera->transform->position = players[myid].transform->position + camera_offset;
+				pointer->position = players[myid].transform->make_local_to_world() * glm::vec4(0.0f, 0.0f, 5.0f, 0.0f) + players[myid].transform->position;
+
 				if (type == 'w'){
 					server_message = "Waiting for " + server_message + " more player(s).";
 				}
@@ -318,6 +338,7 @@ void PlayMode::update(float elapsed) {
 					// int numPlayer = std::stoi(server_message.substr(0, server_message.find("|")));
 					// server_message.erase(0, server_message.find("|")+1);
 					waiting = false;
+					turn_timer = 10.0f;
 					max_player = std::stoi(extract_first(server_message, "|"));
 					for (int i=0; i<max_player; i++){
 						// std::string player_info = server_message.substr(0, server_message.find("|"));
@@ -397,8 +418,7 @@ void PlayMode::draw(glm::uvec2 const& drawable_size) {
 		};
 
 		draw_text(glm::vec2(-aspect + 0.1f, 0.0f), server_message, 0.09f);
-
-		draw_text(glm::vec2(-aspect + 0.1f, -0.9f), "(press WASD to change your total)", 0.09f);
+		if(!waiting) draw_text(glm::vec2(-aspect + 0.1f, -0.9f), "Turn End in " + std::to_string((int)turn_timer), 0.09f);
 	}
 	GL_ERRORS();
 }

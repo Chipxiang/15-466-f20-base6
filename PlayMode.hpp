@@ -30,6 +30,11 @@ struct PlayMode : Mode {
 	const float unit = 2.0f;
 	const glm::vec3 level_offset = glm::vec3(0, 0, 1.5f);
 	const glm::vec3 level_spacing = glm::vec3(0, 0, 0.2f);
+	const glm::vec3 camera_offset = glm::vec3(0, -15, 10);
+	const float pointer_max = 4.0f;
+	const float pointer_min = 3.0f;
+
+	int pointer_sign = -1;
 	int xmax = 15;
 	int xmin = 0;
 	int ymax = 15;
@@ -37,6 +42,7 @@ struct PlayMode : Mode {
 	int max_player = 4;
 	int myid = 0;
 	int turn = -1;
+	float turn_timer = 0.0f;
 
 	struct Player {
 		Scene::Transform* transform;
@@ -59,15 +65,16 @@ struct PlayMode : Mode {
 	void show_defend(int id);
 	void reset_defend(int id);
 	void update_level();
+	void camera_focus(int id);
 	std::vector<Player> players;
 
 	//last message from server:
-	std::string server_message;
+	std::string server_message = "Connecting to server";
 
 	//connection to server:
 	Client& client;
 	Scene::Camera* camera = nullptr;
-
+	Scene::Transform* pointer = nullptr;
 	int8_t action = 0; // 0 for nothing, 1 for charge, 2 for attack, 3 for defend
 	bool pressed = false;
 	int8_t mov_x = 0;
