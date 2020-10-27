@@ -38,11 +38,7 @@ int main(int argc, char **argv) {
 			static uint32_t next_player_id = 0;
 			// name = "Player" + std::to_string(next_player_id);
 			id = std::to_string(next_player_id);
-			x = next_player_id;
-			y = next_player_id;
 			next_player_id += 1;
-			alive = true;
-			energy = 0;
 			action = 0;
 			mov_x = 0;
 			mov_y = 0;
@@ -52,11 +48,6 @@ int main(int argc, char **argv) {
 		int action;
 		int mov_x;
 		int mov_y;
-
-		int x;
-		int y;
-		int energy;
-		bool alive;
 
 	};
 	std::unordered_map< Connection *, PlayerInfo > players;
@@ -127,57 +118,6 @@ int main(int argc, char **argv) {
 			//update current game state
 			//TODO: replace with *your* game state update
 			
-			for (auto &[c, player] : players) {
-				(void)c; //work around "unused variable" warning on whatever version of g++ github actions is running
-				// for (; player.left_presses > 0; --player.left_presses) {
-				// 	player.x -= 1;
-				// }
-				// for (; player.right_presses > 0; --player.right_presses) {
-				// 	player.x += 1;
-				// }
-				// for (; player.down_presses > 0; --player.down_presses) {
-				// 	player.y -= 1;
-				// }
-				// for (; player.up_presses > 0; --player.up_presses) {
-				// 	player.y += 1;
-				// }
-				player.x += player.mov_x;
-				player.y += player.mov_y;
-				if (player.action == 1)
-					player.energy ++;
-
-				// if (status_message != "") status_message += " | ";
-				// status_message += std::to_string(player.x) + ", " + std::to_string(player.y) + " (" + player.name + ")";
-			}
-
-			for (auto &[c1, player1] : players) {
-				(void)c1; //work around "unused variable" warning on whatever version of g++ github actions is running
-				if (player1.alive){
-					for (auto &[c2, player2] : players) {
-						(void)c2;
-						if (player1.id != player2.id && player2.alive && player1.x == player2.x && player1.y == player2.y && player1.energy > player2.energy){
-							player2.alive = false;
-						}
-					}
-					
-				}
-			}
-
-			for (auto &[c1, player1] : players) {
-				(void)c1; //work around "unused variable" warning on whatever version of g++ github actions is running
-				if (player1.alive && player1.action == 2){
-					for (auto &[c2, player2] : players) {
-						(void)c2;
-						if (player1.id != player2.id && abs(player1.x-player2.x) <= player1.energy && abs(player1.y-player2.y) <= player1.energy && (player2.action != 2 || player1.energy > player2.energy) && player2.action != 3){
-							player2.alive = false;
-						}
-					}
-					
-				}
-			}
-			//std::cout << status_message << std::endl; //DEBUG
-
-			
 			
 			for (auto &[c, player] : players) {
 				(void)c; //work around "unused variable" warning on whatever version of g++ github actions is running
@@ -185,8 +125,6 @@ int main(int argc, char **argv) {
 				
 				status_message += player.id+","+std::to_string(player.mov_x) + "," + std::to_string(player.mov_y) + "," +std::to_string(player.action);
 				status_message += "|";
-				if (player.action == 2)
-					player.energy = 0;
 				player.action = 0;
 				player.mov_x = 0;
 				player.mov_y = 0;
