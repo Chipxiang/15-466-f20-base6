@@ -162,7 +162,8 @@ int PlayMode::game_winner(){
 			winner = i;
 		}
 	}
-	if (alive_count <= 1) return winner;
+	if (alive_count == 1) return winner;
+	if (alive_count == 0) return -2;
 	else return -1;
 }
 
@@ -450,7 +451,11 @@ void PlayMode::update(float elapsed) {
 				if (winner == -1)
 					accept_input = true;
 				else{
-					camera_focus(winner);
+					if (winner >= 0){
+						camera_focus(winner);
+					} else {
+						camera_global();
+					}	
 					accept_input = false;
 				}
 			}
@@ -542,11 +547,11 @@ void PlayMode::update(float elapsed) {
 			case 6:
 				if (update_timer < 1.2f) {
 					camera_global();
-					for (int j=xmin-1; j<xmax+1; j++){
+					for (int j=xmin-1; j<=xmax+1; j++){
 						cubes[j][ymin-1]->transform->position.z += elapsed * 10;
 						cubes[j][ymax+1]->transform->position.z += elapsed * 10;
 					}
-					for (int j=ymin; j<ymax; j++){
+					for (int j=ymin; j<=ymax; j++){
 						cubes[xmin-1][j]->transform->position.z += elapsed * 10;
 						cubes[xmax+1][j]->transform->position.z += elapsed * 10;
 					}
@@ -568,7 +573,6 @@ void PlayMode::update(float elapsed) {
 	if (players[myid].is_alive) {
 		if (pressed == 1) {
 			//send a four-byte message of type 'b':
-			std::cout << "Sent message" << std::endl;
 			client.connections.back().send('b');
 			client.connections.back().send(mov_x);
 			client.connections.back().send(mov_y);
@@ -634,7 +638,6 @@ void PlayMode::update(float elapsed) {
 				// myid = std::stoi(server_message.substr(0, server_message.find("|")));
 				// server_message.erase(0, server_message.find("|")+1);
 				myid = std::stoi(extract_first(server_message, "|"));
-				std::cout << "my id is " << myid << std::endl;
 				if (players[myid].is_alive)
 					camera->transform->position = players[myid].transform->position + camera_offset;
 				pointer->position = players[myid].transform->make_local_to_world() * glm::vec4(0.0f, 0.0f, 4.0f, 0.0f) + players[myid].transform->position;
@@ -686,9 +689,6 @@ void PlayMode::update(float elapsed) {
 					players[myid].transform->position.x = players[myid].x * 2.0f;
 					players[myid].transform->position.y = players[myid].y * 2.0f;
 
-					for (int i = 0; i < max_player; i++) {
-						std::cout << players[i].mov_x << " " << players[i].mov_y << " " << players[i].action << std::endl;
-					}
 				}
 			}
 		}
@@ -739,20 +739,22 @@ void PlayMode::draw(glm::uvec2 const& drawable_size) {
 			lines.draw_text(text,
 				glm::vec3(at.x + ofs, at.y + ofs, 0.0),
 				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+				glm::u8vec4(0xff, 0x00, 0x00, 0x00));
 		};
 		if (winner > 0){
 			if (winner == myid)
 				draw_text(glm::vec2(-aspect + 0.1f, 0.6f), "You Won!!!", 0.09f);
 			else
 				draw_text(glm::vec2(-aspect + 0.1f, 0.6f), "Winner is "+std::to_string(winner), 0.09f);
+		} else if (winner == -2){
+			draw_text(glm::vec2(-aspect + 0.1f, 0.6f), "And Then There Were None", 0.09f);
 		}
 		if (!players[myid].is_alive){
 			draw_text(glm::vec2(-aspect + 0.1f, 0.8f), "You lost :(", 0.09f);
 		}
 		draw_text(glm::vec2(-aspect + 0.1f, 0.0f), server_message, 0.09f);
-		draw_text(glm::vec2(-aspect + 0.1f, -0.6f), "Update Timer " + std::to_string(update_timer), 0.09f);
-		if (!waiting) draw_text(glm::vec2(-aspect + 0.1f, -0.9f), "Turn End in " + std::to_string((int)turn_timer), 0.09f);
+		// draw_text(glm::vec2(-aspect + 0.1f, -0.6f), "Update Timer " + std::to_string(update_timer), 0.09f);
+		if (!waiting) draw_text(glm::vec2(-aspect + 0.1f, -0.9f), "Turn End in " + std::to_string((int)turn_timer) +"s", 0.09f);
 	}
 	GL_ERRORS();
 }

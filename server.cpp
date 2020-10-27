@@ -26,9 +26,9 @@ int main(int argc, char **argv) {
 
 	Server server(argv[1]);
 
-	size_t numPlayer = 2;
+	size_t numPlayer = 4;
 	//------------ main loop ------------
-	constexpr float ServerTick = 10.0f; //TODO: set a server tick that makes sense for your game
+	constexpr float ServerTick = 15.0f; //TODO: set a server tick that makes sense for your game
 
 	//server state:
 
@@ -202,7 +202,6 @@ int main(int argc, char **argv) {
 				c->send(uint8_t((msg.size() >> 8) % 256));
 				c->send(uint8_t(msg.size() % 256));
 				c->send_buffer.insert(c->send_buffer.end(), msg.begin(), msg.end());
-				std::cout << msg << std::endl;
 			}
 		} else {
 			for (auto &[c, player] : players) {
