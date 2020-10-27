@@ -183,7 +183,7 @@ int main(int argc, char **argv) {
 				(void)c; //work around "unused variable" warning on whatever version of g++ github actions is running
 				
 				
-				status_message += std::to_string(player.mov_x) + "," + std::to_string(player.mov_y) + "," +std::to_string(player.action);
+				status_message += player.id+","+std::to_string(player.mov_x) + "," + std::to_string(player.mov_y) + "," +std::to_string(player.action);
 				status_message += "|";
 				if (player.action == 2)
 					player.energy = 0;
