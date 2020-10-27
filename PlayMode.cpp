@@ -100,6 +100,18 @@ void PlayMode::show_attack(int id, int range) {
 			if (cubes[i][j]->transform->position.z > -1) {
 				continue;
 			}
+			bool off = false;
+			for (int k = 0; k < max_player; k++) {
+				if (k == id)
+					continue;
+				if (players[k].x == i && players[k].y == j && players[k].level == players[id].level) {
+					off = true;
+					break;
+				}
+			}
+			if (off) {
+				continue;
+			}
 			std::cout << "Attack" + std::to_string(id) << std::endl;
 			Mesh const& mesh = game_scene_meshes->lookup("Attack" + std::to_string(id));
 			cubes[i][j]->pipeline.type = mesh.type;
@@ -342,6 +354,8 @@ void PlayMode::update(float elapsed) {
 			}
 			// Find one who attacked.
 			if (updating_id == -1 && curr_action == 2) {
+				int min_id = -1;
+				int min_level = 100;
 				for (int i = 0; i < max_player; i++) {
 					if (i == myid)
 						continue;
@@ -349,12 +363,15 @@ void PlayMode::update(float elapsed) {
 						continue;
 					}
 					if (players[i].action == 2) {
-						updating_id = i;
-						break;
+						if (players[i].level < min_level) {
+							min_level = players[i].level;
+							min_id = i;
+						}
 					}
 				}
+				updating_id = min_id;
 				if (updating_id == -1) {
-					curr_action = 4;
+					curr_action = 5;
 				}
 			}
 			// All updated
@@ -390,15 +407,15 @@ void PlayMode::update(float elapsed) {
 				if (update_timer < 1.2f && !is_updating) {
 					int range = players[updating_id].level;
 					show_attack(updating_id, range);
-					for (int i=0; i<max_player; i++){
-						if (i != updating_id && abs(players[i].x-players[updating_id].x) <= range &&
-						abs(players[i].y - players[updating_id].y) <= range){
-							if (players[i].action != 3 && !(players[i].action == 2 && players[i].level >= range)){
-								players[i].is_alive = false;
-								// show_death(i);
-							}
-						}
-					}
+					//for (int i=0; i<max_player; i++){
+					//	if (i != updating_id && abs(players[i].x-players[updating_id].x) <= range &&
+					//	abs(players[i].y - players[updating_id].y) <= range){
+					//		if (players[i].action != 3 && !(players[i].action == 2 && players[i].level >= range)){
+					//			players[i].is_alive = false;
+					//			// show_death(i);
+					//		}
+					//	}
+					//}
 					is_updating = true;
 				}
 				break;
@@ -561,6 +578,9 @@ void PlayMode::update(float elapsed) {
 					}
 					if (players[myid].action == 3) {
 						reset_defend(myid);
+					}
+					if (players[myid].action == 2) {
+						reset_attack(myid, players[myid].level);
 					}
 					if (players[myid].level_drawables.size() > players[myid].level) {
 						leveldown(myid, (int)players[myid].level_drawables.size() - players[myid].level);
