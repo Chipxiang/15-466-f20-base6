@@ -61,6 +61,9 @@ PlayMode::PlayMode(Client& client_) : client(client_) {
 void PlayMode::camera_focus(int id) {
 	camera->transform->position = players[id].transform->position + camera_offset;
 }
+void PlayMode::camera_global() {
+	camera->transform->position = glm::vec3(16, -50, 40);
+}
 void PlayMode::levelup(int id, int count) {
 	for (int i = 0; i < count; i++) {
 		Mesh const& mesh = game_scene_meshes->lookup("Level");
