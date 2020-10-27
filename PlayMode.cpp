@@ -96,23 +96,25 @@ void PlayMode::leveldown(int id, int count) {
 void PlayMode::show_attack(int id, int range) {
 	for (int i = std::max(xmin, players[id].x - range); i <= players[id].x + range && i <= xmax; i++) {
 		for (int j = std::max(ymin, players[id].y - range); j <= players[id].y + range && j <= ymax; j++) {
-			std::cout << i << "," << j << std::endl;
 			if (cubes[i][j]->transform->position.z > -1) {
 				continue;
 			}
 			bool off = false;
-			for (int k = 0; k < max_player; k++) {
-				if (k == id)
-					continue;
-				if (players[k].x == i && players[k].y == j && players[k].level == players[id].level) {
-					off = true;
-					break;
+			if (!accept_input) {
+				for (int k = 0; k < max_player; k++) {
+					if (k == id)
+						continue;
+					if (players[k].x == i && players[k].y == j) {
+						if (players[k].level >= players[id].level && players[k].action == 2) {
+							off = true;
+							break;
+						}
+					}
 				}
 			}
 			if (off) {
 				continue;
 			}
-			std::cout << "Attack" + std::to_string(id) << std::endl;
 			Mesh const& mesh = game_scene_meshes->lookup("Attack" + std::to_string(id));
 			cubes[i][j]->pipeline.type = mesh.type;
 			cubes[i][j]->pipeline.start = mesh.start;
@@ -277,9 +279,10 @@ void PlayMode::update(float elapsed) {
 		// find the next one to update
 		if (update_timer < 0) {
 			if (updating_id != -1) {
-				if(death_id != -1)
+				if (death_id != -1)
 					players[death_id].updated = true;
 				death_id = -1;
+				//if(players[updating_id].action != 2 || !players[updating_id].is_alive)
 				players[updating_id].updated = true;
 				is_updating = false;
 			}
@@ -357,7 +360,7 @@ void PlayMode::update(float elapsed) {
 				int min_id = -1;
 				int min_level = 100;
 				for (int i = 0; i < max_player; i++) {
-					if (i == myid)
+					if (!players[i].is_alive)
 						continue;
 					if (players[i].updated) {
 						continue;
@@ -374,16 +377,44 @@ void PlayMode::update(float elapsed) {
 					curr_action = 5;
 				}
 			}
+			// Find one who is dead because of attack.
+			if (updating_id == -1 && curr_action == 5) {
+				for (int i = 0; i < max_player; i++) {
+					if (!players[i].is_alive)
+						continue;
+					bool found_id = false;
+					for (int j = 0; j < max_player; j++) {
+						if (j != i && players[j].action == 2 && std::abs(players[j].x - players[i].x) <= players[j].level &&
+							std::abs(players[j].y - players[i].y) <= players[j].level) {
+							if (players[i].action == 3 || (players[i].action == 2 && players[j].level <= players[i].level)) {
+								continue;
+							}
+							updating_id = i;
+							break;
+						}
+
+					}
+					if (found_id)
+						break;
+				}
+				if (updating_id == -1) {
+					curr_action = -1;
+				}
+			}
 			// All updated
 			if (updating_id == -1) {
 				for (int i = 0; i < max_player; i++) {
 					if (players[i].action == 3) {
 						reset_defend(i);
 					}
+					if (players[i].action == 2) {
+						reset_attack(i, players[i].level);
+						players[i].level = 0;
+					}
 				}
 				update_timer = 0.0f;
 				curr_action = 0;
-				if(players[myid].is_alive)
+				if (players[myid].is_alive)
 					camera_focus(myid);
 				accept_input = true;
 			}
@@ -393,7 +424,7 @@ void PlayMode::update(float elapsed) {
 		}
 		// keep updating the current updating player.
 		else {
-			if(!is_updating)
+			if (!is_updating)
 				camera_focus(updating_id);
 			switch (curr_action)
 			{
@@ -407,20 +438,12 @@ void PlayMode::update(float elapsed) {
 				if (update_timer < 1.2f && !is_updating) {
 					int range = players[updating_id].level;
 					show_attack(updating_id, range);
-					//for (int i=0; i<max_player; i++){
-					//	if (i != updating_id && abs(players[i].x-players[updating_id].x) <= range &&
-					//	abs(players[i].y - players[updating_id].y) <= range){
-					//		if (players[i].action != 3 && !(players[i].action == 2 && players[i].level >= range)){
-					//			players[i].is_alive = false;
-					//			// show_death(i);
-					//		}
-					//	}
-					//}
+					leveldown(updating_id, players[updating_id].level);
 					is_updating = true;
 				}
 				break;
 			case 4: // movec
-				if (update_timer < 1.2f){
+				if (update_timer < 1.2f) {
 					if (!is_updating) {
 						if (players[updating_id].mov_x == -1 && players[updating_id].x > xmin) {
 							players[updating_id].x--;
@@ -439,10 +462,10 @@ void PlayMode::update(float elapsed) {
 							players[updating_id].transform->position.y -= unit;
 						}
 						for (int i = 0; i < max_player; i++) {
-							if (i == updating_id)
+							if (i == updating_id || !players[i].is_alive)
 								continue;
-							if (players[i].x  == players[updating_id].x && players[i].y == players[updating_id].y) {
-								if (players[i].level > players[updating_id].level || 
+							if (players[i].x == players[updating_id].x && players[i].y == players[updating_id].y) {
+								if (players[i].level > players[updating_id].level ||
 									(players[i].level == players[updating_id].level && i < updating_id)) {
 									leveldown(i, players[i].level - players[updating_id].level);
 									players[i].level -= players[updating_id].level;
@@ -464,7 +487,6 @@ void PlayMode::update(float elapsed) {
 						show_death(death_id, elapsed);
 					}
 				}
-				
 				break;
 			case 3:
 				if (update_timer < 1.2f && !is_updating) {
@@ -472,6 +494,14 @@ void PlayMode::update(float elapsed) {
 					is_updating = true;
 				}
 				break;
+			case 5:
+				if (update_timer < 1.2f) {
+					if (!is_updating) {
+						players[updating_id].is_alive = false;
+						is_updating = true;
+					}
+					show_death(updating_id, elapsed);
+				}
 			default:
 				break;
 			}
@@ -515,7 +545,7 @@ void PlayMode::update(float elapsed) {
 		mov_y = 0;
 		action = 0;
 	}
-	
+
 
 	client.poll([this](Connection* c, Connection::Event event) {
 		if (event == Connection::OnOpen) {
@@ -548,7 +578,7 @@ void PlayMode::update(float elapsed) {
 				// server_message.erase(0, server_message.find("|")+1);
 				myid = std::stoi(extract_first(server_message, "|"));
 				std::cout << "my id is " << myid << std::endl;
-				if(players[myid].is_alive)
+				if (players[myid].is_alive)
 					camera->transform->position = players[myid].transform->position + camera_offset;
 				pointer->position = players[myid].transform->make_local_to_world() * glm::vec4(0.0f, 0.0f, 4.0f, 0.0f) + players[myid].transform->position;
 
