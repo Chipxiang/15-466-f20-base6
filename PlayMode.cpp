@@ -557,8 +557,8 @@ void PlayMode::update(float elapsed) {
 					}
 					for (int i=0; i<max_player; i++){
 						if (players[i].x < xmin || players[i].x > xmax || players[i].y < ymin || players[i].y > ymax){
-							players[updating_id].is_alive = false;
-							show_death(updating_id, elapsed);
+							players[i].is_alive = false;
+							show_death(i, elapsed);
 						}
 					}
 					
