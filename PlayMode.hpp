@@ -50,6 +50,7 @@ struct PlayMode : Mode {
 	int updating_id = -1;
 	bool is_updating = false;
 	float update_timer = 0.0f;
+	int death_id = -1;
 
 	struct Player {
 		Scene::Transform* transform;
@@ -65,15 +66,16 @@ struct PlayMode : Mode {
 		std::vector<std::list<Scene::Drawable>::iterator> level_drawables;
 	};
 	std::list<Scene::Drawable>::iterator cubes[16][16] = { {} };
-
+	
 	void levelup(int id, int count);
 	void leveldown(int id, int count);
 	void show_attack(int id, int range);
 	void reset_attack(int id, int range);
 	void show_defend(int id);
 	void reset_defend(int id);
-	void update_level();
 	void camera_focus(int id);
+	void show_death(int id, float elapsed);
+
 	std::vector<Player> players;
 
 	//last message from server:

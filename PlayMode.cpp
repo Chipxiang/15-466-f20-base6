@@ -63,7 +63,6 @@ void PlayMode::camera_focus(int id) {
 }
 void PlayMode::levelup(int id, int count) {
 	for (int i = 0; i < count; i++) {
-		players[id].level++;
 		Mesh const& mesh = game_scene_meshes->lookup("Level");
 		// create new transform
 		scene.transforms.emplace_back();
@@ -86,7 +85,6 @@ void PlayMode::levelup(int id, int count) {
 }
 
 void PlayMode::leveldown(int id, int count) {
-	std::cout << "level down " << count << std::endl;
 	for (int i = 0; i < count; i++) {
 		if (players[id].level_drawables.size() > 0) {
 			scene.drawables.erase(players[id].level_drawables.back());
@@ -109,6 +107,10 @@ void PlayMode::show_attack(int id, int range) {
 			cubes[i][j]->pipeline.count = mesh.count;
 		}
 	}
+}
+
+void PlayMode::show_death(int id, float elapsed) {
+	players[id].transform->position.z += elapsed * 10;
 }
 
 void PlayMode::reset_attack(int id, int range) {
@@ -145,28 +147,32 @@ bool PlayMode::handle_event(SDL_Event const& evt, glm::uvec2 const& window_size)
 		else if (evt.key.repeat || !accept_input || pressed) {
 			//ignore repeats
 		}
-		else if (evt.key.keysym.sym == SDLK_a) {
+		else if (evt.key.keysym.sym == SDLK_a && players[myid].x > xmin) {
 			pressed = 1;
 			mov_x = -1;
 			mov_y = 0;
+			action = 4;
 			return true;
 		}
-		else if (evt.key.keysym.sym == SDLK_d) {
+		else if (evt.key.keysym.sym == SDLK_d && players[myid].x < xmax) {
 			pressed = 1;
 			mov_x = 1;
 			mov_y = 0;
+			action = 4;
 			return true;
 		}
-		else if (evt.key.keysym.sym == SDLK_w) {
+		else if (evt.key.keysym.sym == SDLK_w && players[myid].y < ymax) {
 			pressed = 1;
 			mov_y = 1;
 			mov_x = 0;
+			action = 4;
 			return true;
 		}
-		else if (evt.key.keysym.sym == SDLK_s) {
+		else if (evt.key.keysym.sym == SDLK_s && players[myid].y > ymin) {
 			pressed = 1;
 			mov_y = -1;
 			mov_x = 0;
+			action = 4;
 			return true;
 		}
 		else if (evt.key.keysym.sym == SDLK_e) { //defend
@@ -236,17 +242,21 @@ void PlayMode::update(float elapsed) {
 	//TODO: send something that makes sense for your game
 
 	// update pointer position
-	pointer->position.x = players[myid].transform->position.x;
-	pointer->position.y = players[myid].transform->position.y;
-	pointer->position.z += pointer_sign * elapsed;
-
-	if (pointer->position.z <= pointer_min) {
-		pointer_sign = -pointer_sign;
-		pointer->position.z = pointer_min;
+	if (players[myid].is_alive) {
+		pointer->position.x = players[myid].transform->position.x;
+		pointer->position.y = players[myid].transform->position.y;
+		pointer->position.z += pointer_sign * elapsed;
+		if (pointer->position.z <= pointer_min) {
+			pointer_sign = -pointer_sign;
+			pointer->position.z = pointer_min;
+		}
+		else if (pointer->position.z >= pointer_max) {
+			pointer_sign = -pointer_sign;
+			pointer->position.z = pointer_max;
+		}
 	}
-	else if (pointer->position.z >= pointer_max) {
-		pointer_sign = -pointer_sign;
-		pointer->position.z = pointer_max;
+	else {
+		pointer->position.z = 100;
 	}
 	turn_timer -= elapsed;
 
@@ -255,6 +265,9 @@ void PlayMode::update(float elapsed) {
 		// find the next one to update
 		if (update_timer < 0) {
 			if (updating_id != -1) {
+				if(death_id != -1)
+					players[death_id].updated = true;
+				death_id = -1;
 				players[updating_id].updated = true;
 				is_updating = false;
 			}
@@ -262,7 +275,7 @@ void PlayMode::update(float elapsed) {
 			// Find one who did not take action.
 			if (curr_action == 0) {
 				for (int i = 0; i < max_player; i++) {
-					if (i == myid)
+					if (!players[i].is_alive)
 						continue;
 					if (players[i].updated) {
 						continue;
@@ -279,12 +292,29 @@ void PlayMode::update(float elapsed) {
 			// Find one who leveled up.
 			if (updating_id == -1 && curr_action == 1) {
 				for (int i = 0; i < max_player; i++) {
-					if (i == myid)
+					if (!players[i].is_alive)
 						continue;
 					if (players[i].updated) {
 						continue;
 					}
 					if (players[i].action == 1) {
+						updating_id = i;
+						break;
+					}
+				}
+				if (updating_id == -1) {
+					curr_action = 4;
+				}
+			}
+			// Find one who moved.
+			if (updating_id == -1 && curr_action == 4) {
+				for (int i = 0; i < max_player; i++) {
+					if (!players[i].is_alive)
+						continue;
+					if (players[i].updated) {
+						continue;
+					}
+					if (players[i].action == 4) {
 						updating_id = i;
 						break;
 					}
@@ -296,7 +326,7 @@ void PlayMode::update(float elapsed) {
 			// Find one who defended.
 			if (updating_id == -1 && curr_action == 3) {
 				for (int i = 0; i < max_player; i++) {
-					if (i == myid)
+					if (!players[i].is_alive)
 						continue;
 					if (players[i].updated) {
 						continue;
@@ -319,7 +349,8 @@ void PlayMode::update(float elapsed) {
 				}
 				update_timer = 0.0f;
 				curr_action = 0;
-				camera_focus(myid);
+				if(players[myid].is_alive)
+					camera_focus(myid);
 				accept_input = true;
 			}
 			else {
@@ -332,68 +363,111 @@ void PlayMode::update(float elapsed) {
 				camera_focus(updating_id);
 			switch (curr_action)
 			{
-			case 1:
+			case 1: // level up
 				if (update_timer < 1.2f && !is_updating) {
 					levelup(updating_id, 1);
+					players[updating_id].level++;
 					is_updating = true;
 				}
+				break;
+			case 4: // movec
+				if (update_timer < 1.2f){
+					if (!is_updating) {
+						if (players[updating_id].mov_x == -1 && players[updating_id].x > xmin) {
+							players[updating_id].x--;
+							players[updating_id].transform->position.x -= unit;
+						}
+						else if (players[updating_id].mov_x == 1 && players[updating_id].x < xmax) {
+							players[updating_id].x++;
+							players[updating_id].transform->position.x += unit;
+						}
+						else if (players[updating_id].mov_y == 1 && players[updating_id].y < ymax) {
+							players[updating_id].y++;
+							players[updating_id].transform->position.y += unit;
+						}
+						else if (players[updating_id].mov_y == -1 && players[updating_id].y > ymin) {
+							players[updating_id].y--;
+							players[updating_id].transform->position.y -= unit;
+						}
+						for (int i = 0; i < max_player; i++) {
+							if (i == updating_id)
+								continue;
+							if (players[i].x  == players[updating_id].x && players[i].y == players[updating_id].y) {
+								if (players[i].level > players[updating_id].level || 
+									(players[i].level == players[updating_id].level && i < updating_id)) {
+									leveldown(i, players[i].level - players[updating_id].level);
+									players[i].level -= players[updating_id].level;
+									players[updating_id].is_alive = false;
+									death_id = updating_id;
+								}
+								else if (players[i].level < players[updating_id].level ||
+									(players[i].level == players[updating_id].level && i > updating_id)) {
+									leveldown(updating_id, players[updating_id].level - players[i].level);
+									players[updating_id].level -= players[i].level;
+									players[i].is_alive = false;
+									death_id = i;
+								}
+							}
+						}
+						is_updating = true;
+					}
+					if (death_id != -1) {
+						show_death(death_id, elapsed);
+					}
+				}
+				
+				break;
 			case 3:
 				if (update_timer < 1.2f && !is_updating) {
 					show_defend(updating_id);
 					is_updating = true;
 				}
+				break;
 			default:
 				break;
 			}
 		}
 	}
 
+	if (players[myid].is_alive) {
+		if (pressed == 1) {
+			//send a four-byte message of type 'b':
+			std::cout << "Sent message" << std::endl;
+			client.connections.back().send('b');
+			client.connections.back().send(mov_x);
+			client.connections.back().send(mov_y);
+			client.connections.back().send(action);
+			pressed = 2;
+		}
+		if (mov_x == -1 && players[myid].x > xmin) {
+			players[myid].transform->position.x -= unit;
+		}
+		else if (mov_x == 1 && players[myid].x < xmax) {
+			players[myid].transform->position.x += unit;
+		}
+		else if (mov_y == 1 && players[myid].y < ymax) {
+			players[myid].transform->position.y += unit;
+		}
+		else if (mov_y == -1 && players[myid].y > ymin) {
+			players[myid].transform->position.y -= unit;
+		}
+		else if (action == 3) {
+			show_defend(myid);
+		}
+		else if (action == 1) {
+			levelup(myid, 1);
+		}
+		else if (action == 2) {
+			leveldown(myid, players[myid].level);
+			show_attack(myid, players[myid].level);
+		}
+		//reset button press counters:
+		mov_x = 0;
+		mov_y = 0;
+		action = 0;
+	}
+	
 
-	if (pressed == 1) {
-		//send a four-byte message of type 'b':
-		std::cout << "Sent message" << std::endl;
-		client.connections.back().send('b');
-		client.connections.back().send(mov_x);
-		client.connections.back().send(mov_y);
-		client.connections.back().send(action);
-		pressed = 2;
-	}
-	if (left.downs && players[myid].x > xmin) {
-		players[myid].x--;
-		players[myid].transform->position.x -= unit;
-	}
-	if (right.downs && players[myid].x < xmax) {
-		players[myid].x++;
-		players[myid].transform->position.x += unit;
-	}
-	if (up.downs && players[myid].y < ymax) {
-		players[myid].y++;
-		players[myid].transform->position.y += unit;
-	}
-	if (down.downs && players[myid].y > ymin) {
-		players[myid].y--;
-		players[myid].transform->position.y -= unit;
-	}
-	if (action == 3) {
-		show_defend(myid);
-	}
-	if (action == 1) {
-		levelup(myid, 1);
-	}
-	if (action == 2) {
-		show_attack(myid, players[myid].level);
-	}
-	if (backspace.downs) {
-		leveldown(myid, 1);
-		show_attack(myid, 1);
-	}
-	//reset button press counters:
-	mov_x = 0;
-	mov_y = 0;
-	action = 0;
-
-	space.downs = 0;
-	backspace.downs = 0;
 	client.poll([this](Connection* c, Connection::Event event) {
 		if (event == Connection::OnOpen) {
 			std::cout << "[" << c->socket << "] opened" << std::endl;
@@ -424,7 +498,8 @@ void PlayMode::update(float elapsed) {
 				// myid = std::stoi(server_message.substr(0, server_message.find("|")));
 				// server_message.erase(0, server_message.find("|")+1);
 				myid = std::stoi(extract_first(server_message, "|"));
-				camera->transform->position = players[myid].transform->position + camera_offset;
+				if(players[myid].is_alive)
+					camera->transform->position = players[myid].transform->position + camera_offset;
 				pointer->position = players[myid].transform->make_local_to_world() * glm::vec4(0.0f, 0.0f, 4.0f, 0.0f) + players[myid].transform->position;
 
 				if (type == 'w') {
@@ -452,24 +527,26 @@ void PlayMode::update(float elapsed) {
 						players[i].action = std::stoi(extract_first(player_info, ","));
 						players[i].updated = false;
 					}
+					if (players[myid].action == 3) {
+						reset_defend(myid);
+					}
+					if (players[myid].level_drawables.size() > players[myid].level) {
+						leveldown(myid, (int)players[myid].level_drawables.size() - players[myid].level);
+					}
+					else {
+						levelup(myid, players[myid].level - (int)players[myid].level_drawables.size());
+					}
+					players[myid].transform->position.x = players[myid].x * 2.0f;
+					players[myid].transform->position.y = players[myid].y * 2.0f;
+
 					for (int i = 0; i < max_player; i++) {
-						std::cout << players[i].x << " " << players[i].y << " " << players[i].level << std::endl;
+						std::cout << players[i].mov_x << " " << players[i].mov_y << " " << players[i].action << std::endl;
 					}
 				}
 			}
 		}
 		}, 0.0);
 }
-
-void PlayMode::update_level() {
-	for (int i = 0; i < max_player; i++) {
-		if (i == myid) continue;
-		if (players[i].action == 1) {
-			levelup(i, 1);
-		}
-	}
-}
-
 std::string PlayMode::extract_first(std::string& message, std::string delimiter) {
 	std::string res = message.substr(0, message.find(delimiter));
 	message.erase(0, message.find(delimiter) + delimiter.size());
