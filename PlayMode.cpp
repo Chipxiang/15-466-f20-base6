@@ -59,6 +59,7 @@ PlayMode::PlayMode(Client& client_) : client(client_) {
 	// std::cout << camera->transform->rotation.x << "," << camera->transform->rotation.y << "," << camera->transform->rotation.z << std::endl;
 }
 void PlayMode::camera_focus(int id) {
+	
 	camera->transform->position = players[id].transform->position + camera_offset;
 }
 void PlayMode::camera_global() {
@@ -127,7 +128,7 @@ void PlayMode::show_attack(int id, int range) {
 }
 
 void PlayMode::show_death(int id, float elapsed) {
-	players[id].transform->position.z += elapsed * 10;
+	players[id].transform->position.z -= elapsed * 10;
 }
 
 void PlayMode::reset_attack(int id, int range) {
@@ -272,7 +273,7 @@ bool PlayMode::handle_event(SDL_Event const& evt, glm::uvec2 const& window_size)
 void PlayMode::update(float elapsed) {
 	//queue data for sending to server:
 	//TODO: send something that makes sense for your game
-
+	std::cout << camera->transform->position.x << " " << camera->transform->position.y << " " << camera->transform->position.z << std::endl;
 	// update pointer position
 	if (players[myid].is_alive) {
 		pointer->position.x = players[myid].transform->position.x;
@@ -548,12 +549,12 @@ void PlayMode::update(float elapsed) {
 				if (update_timer < 1.2f) {
 					camera_global();
 					for (int j=xmin-1; j<=xmax+1; j++){
-						cubes[j][ymin-1]->transform->position.z += elapsed * 10;
-						cubes[j][ymax+1]->transform->position.z += elapsed * 10;
+						cubes[j][ymin-1]->transform->position.z -= elapsed * 10;
+						cubes[j][ymax+1]->transform->position.z -= elapsed * 10;
 					}
 					for (int j=ymin; j<=ymax; j++){
-						cubes[xmin-1][j]->transform->position.z += elapsed * 10;
-						cubes[xmax+1][j]->transform->position.z += elapsed * 10;
+						cubes[xmin-1][j]->transform->position.z -= elapsed * 10;
+						cubes[xmax+1][j]->transform->position.z -= elapsed * 10;
 					}
 					for (int i=0; i<max_player; i++){
 						if (players[i].x < xmin || players[i].x > xmax || players[i].y < ymin || players[i].y > ymax){
