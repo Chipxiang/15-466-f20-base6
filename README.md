@@ -11,6 +11,7 @@ Screen Shot:
 ![Screen Shot](screenshot.png)
 
 How To Play:
+
 Goal: Beat all other players and survive to be the last one standing.
 
 Basic Rules: 
@@ -33,6 +34,8 @@ Charging (Space):\
 Increase MP by one.
 
 The game map dimension will be shrinking by 1 every 3 turns, so player cannot just run around an avoid attacks.
+
+Click mouse to grab the camera, and camera will move following the mouse movement. Press Esc to ungrab mouse.
 
 Sources:
 
