@@ -527,7 +527,7 @@ void PlayMode::update(float elapsed) {
 						is_updating = true;
 					}
 					if (death_id != -1) {
-						show_death(death_id, elapsed);
+						show_death(death_id, -elapsed);
 					}
 				}
 				break;
@@ -543,7 +543,7 @@ void PlayMode::update(float elapsed) {
 						players[updating_id].is_alive = false;
 						is_updating = true;
 					}
-					show_death(updating_id, elapsed);
+					show_death(updating_id, -elapsed);
 				}
 			case 6:
 				if (update_timer < 1.2f) {
