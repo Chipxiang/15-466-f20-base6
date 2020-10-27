@@ -564,7 +564,7 @@ void PlayMode::update(float elapsed) {
 					if (players[myid].action == 3) {
 						reset_defend(myid);
 					}
-					if (players[myid].level_drawables.size() > players[myid].level) {
+					if ((int)players[myid].level_drawables.size() > players[myid].level) {
 						leveldown(myid, (int)players[myid].level_drawables.size() - players[myid].level);
 					}
 					else {
