@@ -545,6 +545,7 @@ void PlayMode::update(float elapsed) {
 					}
 					show_death(updating_id, -elapsed);
 				}
+				break;
 			case 6:
 				if (update_timer < 1.2f) {
 					camera_global();
