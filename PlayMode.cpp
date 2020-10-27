@@ -42,7 +42,7 @@ PlayMode::PlayMode(Client& client_) : client(client_) {
 	int cube_count = 0;
 	for (it = scene.drawables.begin(); it != scene.drawables.end(); it++) {
 		if (it->transform->name.find("Player") == 0) {
-			Player player = { it->transform, (int)it->transform->position.x / 2, (int)it->transform->position.y / 2, true, it, 0, 0 };
+			Player player = { it->transform, (int)it->transform->position.x / 2, (int)it->transform->position.y / 2, it };
 			players.push_back(player);
 		}
 		else if (it->transform->name.find("Cube") == 0) {
@@ -56,7 +56,6 @@ PlayMode::PlayMode(Client& client_) : client(client_) {
 	if (players.size() == 0) throw std::runtime_error("player not found.");
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
-	// std::cout << camera->transform->position.x << "," << camera->transform->position.y << "," << camera->transform->position.z << std::endl;
 	// std::cout << camera->transform->rotation.x << "," << camera->transform->rotation.y << "," << camera->transform->rotation.z << std::endl;
 }
 void PlayMode::camera_focus(int id) {
@@ -100,7 +99,7 @@ void PlayMode::show_attack(int id, int range) {
 	for (int i = std::max(xmin, players[id].x - range); i <= players[id].x + range && i <= xmax; i++) {
 		for (int j = std::max(ymin, players[id].y - range); j <= players[id].y + range && j <= ymax; j++) {
 			std::cout << i << "," << j << std::endl;
-			if(cubes[i][j]->transform->position.z > -1){
+			if (cubes[i][j]->transform->position.z > -1) {
 				continue;
 			}
 			std::cout << "Attack" + std::to_string(id) << std::endl;
@@ -125,8 +124,8 @@ void PlayMode::reset_attack(int id, int range) {
 
 void PlayMode::show_defend(int id) {
 	glm::vec3 offset = glm::vec3(0, 0, 1);
-	cubes[players[myid].x][players[myid].y]->transform->position += offset;
-	players[myid].transform->position += offset;
+	cubes[players[id].x][players[id].y]->transform->position += offset;
+	players[id].transform->position += offset;
 }
 
 void PlayMode::reset_defend(int id) {
@@ -139,53 +138,49 @@ PlayMode::~PlayMode() {
 
 bool PlayMode::handle_event(SDL_Event const& evt, glm::uvec2 const& window_size) {
 	if (evt.type == SDL_KEYDOWN) {
-		if (pressed) return false;
-		pressed = true;
-		if (evt.key.repeat) {
-			//ignore repeats
-		}
-		else if (evt.key.keysym.sym == SDLK_ESCAPE) {
+		if (evt.key.keysym.sym == SDLK_ESCAPE) {
 			SDL_SetRelativeMouseMode(SDL_FALSE);
 			return true;
 		}
+		else if (evt.key.repeat || !accept_input || pressed) {
+			//ignore repeats
+		}
 		else if (evt.key.keysym.sym == SDLK_a) {
-			left.downs += 1;
-			left.pressed = true;
+			pressed = 1;
 			mov_x = -1;
 			mov_y = 0;
 			return true;
 		}
 		else if (evt.key.keysym.sym == SDLK_d) {
-			right.downs += 1;
-			right.pressed = true;
+			pressed = 1;
 			mov_x = 1;
 			mov_y = 0;
 			return true;
 		}
 		else if (evt.key.keysym.sym == SDLK_w) {
-			up.downs += 1;
-			up.pressed = true;
+			pressed = 1;
 			mov_y = 1;
 			mov_x = 0;
 			return true;
 		}
 		else if (evt.key.keysym.sym == SDLK_s) {
-			down.downs += 1;
-			down.pressed = true;
+			pressed = 1;
 			mov_y = -1;
 			mov_x = 0;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_e) { //defend
+		}
+		else if (evt.key.keysym.sym == SDLK_e) { //defend
+			pressed = 1;
 			action = 3;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_SPACE) { //charge
-			space.downs += 1;
-			space.pressed = true;
+		}
+		else if (evt.key.keysym.sym == SDLK_SPACE) { //charge
+			pressed = 1;
 			action = 1;
 			return true;
-		} else if (evt.key.keysym.sym == SDLK_BACKSPACE) { //attack
-			backspace.downs += 1;
-			backspace.pressed = true;
+		}
+		else if (evt.key.keysym.sym == SDLK_BACKSPACE) { //attack
+			pressed = 1;
 			action = 2;
 			return true;
 		}
@@ -245,17 +240,118 @@ void PlayMode::update(float elapsed) {
 	pointer->position.y = players[myid].transform->position.y;
 	pointer->position.z += pointer_sign * elapsed;
 
-	if (pointer->position.z <= pointer_min || pointer->position.z >= pointer_max)
+	if (pointer->position.z <= pointer_min) {
 		pointer_sign = -pointer_sign;
-
-	// update timers
+		pointer->position.z = pointer_min;
+	}
+	else if (pointer->position.z >= pointer_max) {
+		pointer_sign = -pointer_sign;
+		pointer->position.z = pointer_max;
+	}
 	turn_timer -= elapsed;
-	if (pressed) {
+
+	if (!accept_input && !waiting && turn != 0) {
+		update_timer -= elapsed;
+		// find the next one to update
+		if (update_timer < 0) {
+			if (updating_id != -1) {
+				players[updating_id].updated = true;
+				is_updating = false;
+			}
+			updating_id = -1;
+			// Find one who did not take action.
+			if (curr_action == 0) {
+				for (int i = 0; i < max_player; i++) {
+					if (i == myid)
+						continue;
+					if (players[i].updated) {
+						continue;
+					}
+					if (players[i].action == 0) {
+						updating_id = i;
+						break;
+					}
+				}
+				if (updating_id == -1) {
+					curr_action = 1;
+				}
+			}
+			// Find one who leveled up.
+			if (updating_id == -1 && curr_action == 1) {
+				for (int i = 0; i < max_player; i++) {
+					if (i == myid)
+						continue;
+					if (players[i].updated) {
+						continue;
+					}
+					if (players[i].action == 1) {
+						updating_id = i;
+						break;
+					}
+				}
+				if (updating_id == -1) {
+					curr_action = 3;
+				}
+			}
+			// Find one who defended.
+			if (updating_id == -1 && curr_action == 3) {
+				for (int i = 0; i < max_player; i++) {
+					if (i == myid)
+						continue;
+					if (players[i].updated) {
+						continue;
+					}
+					if (players[i].action == 3) {
+						updating_id = i;
+						break;
+					}
+				}
+				if (updating_id == -1) {
+					curr_action = 4;
+				}
+			}
+			// All updated
+			if (updating_id == -1) {
+				update_timer = 0.0f;
+				curr_action = 0;
+				camera_focus(myid);
+				accept_input = true;
+			}
+			else {
+				update_timer = 2.0f;
+			}
+		}
+		// keep updating the current updating player.
+		else {
+			if(!is_updating)
+				camera_focus(updating_id);
+			switch (curr_action)
+			{
+			case 1:
+				if (update_timer < 1.2f && !is_updating) {
+					levelup(updating_id, 1);
+					is_updating = true;
+				}
+			case 3:
+				if (update_timer < 1.2f && !is_updating) {
+					show_defend(updating_id);
+					is_updating = true;
+				}
+			default:
+				break;
+			}
+		}
+	}
+
+
+	if (pressed == 1) {
 		//send a four-byte message of type 'b':
+		std::cout << "Sent message" << std::endl;
 		client.connections.back().send('b');
 		client.connections.back().send(mov_x);
 		client.connections.back().send(mov_y);
 		client.connections.back().send(action);
+		pressed = 2;
 	}
 	if (left.downs && players[myid].x > xmin) {
 		players[myid].x--;
@@ -287,18 +383,12 @@ void PlayMode::update(float elapsed) {
 		show_attack(myid, 1);
 	}
 	//reset button press counters:
-	left.downs = 0;
-	right.downs = 0;
-	up.downs = 0;
-	down.downs = 0;
 	mov_x = 0;
 	mov_y = 0;
 	action = 0;
-	pressed = false;
 
 	space.downs = 0;
 	backspace.downs = 0;
-	//send/receive data:
 	client.poll([this](Connection* c, Connection::Event event) {
 		if (event == Connection::OnOpen) {
 			std::cout << "[" << c->socket << "] opened" << std::endl;
@@ -306,7 +396,9 @@ void PlayMode::update(float elapsed) {
 		else if (event == Connection::OnClose) {
 			std::cout << "[" << c->socket << "] closed (!)" << std::endl;
 			throw std::runtime_error("Lost connection to server!");
-		} else { assert(event == Connection::OnRecv);
+		}
+		else {
+			assert(event == Connection::OnRecv);
 			// std::cout << "[" << c->socket << "] recv'd data. Current buffer:\n" << hex_dump(c->recv_buffer); std::cout.flush();
 			//expecting message(s) like 'm' + 3-byte length + length bytes of text:
 			while (c->recv_buffer.size() >= 4) {
@@ -330,17 +422,21 @@ void PlayMode::update(float elapsed) {
 				camera->transform->position = players[myid].transform->position + camera_offset;
 				pointer->position = players[myid].transform->make_local_to_world() * glm::vec4(0.0f, 0.0f, 4.0f, 0.0f) + players[myid].transform->position;
 
-				if (type == 'w'){
+				if (type == 'w') {
 					server_message = "Waiting for " + server_message + " more player(s).";
+					accept_input = false;
 				}
-				
-				if (type == 'm'){
+
+				if (type == 'm') {
 					// int numPlayer = std::stoi(server_message.substr(0, server_message.find("|")));
 					// server_message.erase(0, server_message.find("|")+1);
 					waiting = false;
 					turn_timer = 10.0f;
+					turn++;
+					accept_input = turn == 0;
+					pressed = 0;
 					max_player = std::stoi(extract_first(server_message, "|"));
-					for (int i=0; i<max_player; i++){
+					for (int i = 0; i < max_player; i++) {
 						// std::string player_info = server_message.substr(0, server_message.find("|"));
 						// server_message.erase(0, server_message.find("|")+1);
 						std::string player_info = extract_first(server_message, "|");
@@ -349,15 +445,15 @@ void PlayMode::update(float elapsed) {
 						players[i].mov_y = std::stoi(extract_first(player_info, ","));
 						// players[i].energy = std::stoi(extract_first(player_info, ","));
 						players[i].action = std::stoi(extract_first(player_info, ","));
+						players[i].updated = false;
 					}
-					update_level();
-					for (int i=0; i<max_player; i++){
+					for (int i = 0; i < max_player; i++) {
 						std::cout << players[i].x << " " << players[i].y << " " << players[i].level << std::endl;
 					}
 				}
 			}
 		}
-	}, 0.0);
+		}, 0.0);
 }
 
 void PlayMode::update_level() {
@@ -369,9 +465,9 @@ void PlayMode::update_level() {
 	}
 }
 
-std::string PlayMode::extract_first(std::string &message, std::string delimiter){
+std::string PlayMode::extract_first(std::string& message, std::string delimiter) {
 	std::string res = message.substr(0, message.find(delimiter));
-	message.erase(0, message.find(delimiter)+delimiter.size());
+	message.erase(0, message.find(delimiter) + delimiter.size());
 	return res;
 }
 
@@ -418,7 +514,8 @@ void PlayMode::draw(glm::uvec2 const& drawable_size) {
 		};
 
 		draw_text(glm::vec2(-aspect + 0.1f, 0.0f), server_message, 0.09f);
-		if(!waiting) draw_text(glm::vec2(-aspect + 0.1f, -0.9f), "Turn End in " + std::to_string((int)turn_timer), 0.09f);
+		draw_text(glm::vec2(-aspect + 0.1f, -0.6f), "Update Timer " + std::to_string(update_timer), 0.09f);
+		if (!waiting) draw_text(glm::vec2(-aspect + 0.1f, -0.9f), "Turn End in " + std::to_string((int)turn_timer), 0.09f);
 	}
 	GL_ERRORS();
 }

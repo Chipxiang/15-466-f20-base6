@@ -29,7 +29,7 @@ struct PlayMode : Mode {
 	} left, right, down, up, space, backspace;
 	const float unit = 2.0f;
 	const glm::vec3 level_offset = glm::vec3(0, 0, 1.5f);
-	const glm::vec3 level_spacing = glm::vec3(0, 0, 0.2f);
+	const glm::vec3 level_spacing = glm::vec3(0, 0, 0.3f);
 	const glm::vec3 camera_offset = glm::vec3(0, -15, 10);
 	const float pointer_max = 4.0f;
 	const float pointer_min = 3.0f;
@@ -43,17 +43,25 @@ struct PlayMode : Mode {
 	int myid = 0;
 	int turn = -1;
 	float turn_timer = 0.0f;
+	bool accept_input = false;
+
+
+	int curr_action = 0;
+	int updating_id = -1;
+	bool is_updating = false;
+	float update_timer = 0.0f;
 
 	struct Player {
 		Scene::Transform* transform;
 		int x = 0;
 		int y = 0;
-		bool is_alive = true;
 		std::list<Scene::Drawable>::iterator drawable;
+		bool is_alive = true;
 		int action = 0; // 0 for nothing, 1 for charge, 2 for attack, 3 for defend
 		int level = 0;
 		int mov_x = 0;
 		int mov_y = 0;
+		bool updated = true;
 		std::vector<std::list<Scene::Drawable>::iterator> level_drawables;
 	};
 	std::list<Scene::Drawable>::iterator cubes[16][16] = { {} };
@@ -76,7 +84,7 @@ struct PlayMode : Mode {
 	Scene::Camera* camera = nullptr;
 	Scene::Transform* pointer = nullptr;
 	int8_t action = 0; // 0 for nothing, 1 for charge, 2 for attack, 3 for defend
-	bool pressed = false;
+	int pressed = 0; // 0 for not pressed, 1 for ready to send, 2 for sent.
 	int8_t mov_x = 0;
 	int8_t mov_y = 0;
 
