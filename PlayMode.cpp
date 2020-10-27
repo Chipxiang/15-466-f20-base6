@@ -337,6 +337,23 @@ void PlayMode::update(float elapsed) {
 					}
 				}
 				if (updating_id == -1) {
+					curr_action = 2;
+				}
+			}
+			// Find one who attacked.
+			if (updating_id == -1 && curr_action == 2) {
+				for (int i = 0; i < max_player; i++) {
+					if (i == myid)
+						continue;
+					if (players[i].updated) {
+						continue;
+					}
+					if (players[i].action == 2) {
+						updating_id = i;
+						break;
+					}
+				}
+				if (updating_id == -1) {
 					curr_action = 4;
 				}
 			}
@@ -367,6 +384,21 @@ void PlayMode::update(float elapsed) {
 				if (update_timer < 1.2f && !is_updating) {
 					levelup(updating_id, 1);
 					players[updating_id].level++;
+					is_updating = true;
+				}
+			case 2:
+				if (update_timer < 1.2f && !is_updating) {
+					int range = players[updating_id].level;
+					show_attack(updating_id, range);
+					for (int i=0; i<max_player; i++){
+						if (i != updating_id && abs(players[i].x-players[updating_id].x) <= range &&
+						abs(players[i].y - players[updating_id].y) <= range){
+							if (players[i].action != 3 && !(players[i].action == 2 && players[i].level >= range)){
+								players[i].is_alive = false;
+								// show_death(i);
+							}
+						}
+					}
 					is_updating = true;
 				}
 				break;
