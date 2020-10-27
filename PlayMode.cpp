@@ -152,6 +152,20 @@ void PlayMode::reset_defend(int id) {
 	cubes[players[id].x][players[id].y]->transform->position += offset;
 	players[id].transform->position += offset;
 }
+
+int PlayMode::game_winner(){
+	int alive_count = 0;
+	int winner = -1;
+	for (int i=0; i<max_player; i++){
+		if (players[i].is_alive){
+			alive_count++;
+			winner = i;
+		}
+	}
+	if (alive_count <= 1) return winner;
+	else return -1;
+}
+
 PlayMode::~PlayMode() {
 }
 
@@ -197,12 +211,12 @@ bool PlayMode::handle_event(SDL_Event const& evt, glm::uvec2 const& window_size)
 			action = 3;
 			return true;
 		}
-		else if (evt.key.keysym.sym == SDLK_SPACE) { //charge
+		else if (evt.key.keysym.sym == SDLK_SPACE && players[myid].level < max_level) { //charge
 			pressed = 1;
 			action = 1;
 			return true;
 		}
-		else if (evt.key.keysym.sym == SDLK_BACKSPACE) { //attack
+		else if (evt.key.keysym.sym == SDLK_q) { //attack
 			pressed = 1;
 			action = 2;
 			return true;
@@ -229,7 +243,7 @@ bool PlayMode::handle_event(SDL_Event const& evt, glm::uvec2 const& window_size)
 			space.pressed = false;
 			return true;
 		}
-		else if (evt.key.keysym.sym == SDLK_BACKSPACE) {
+		else if (evt.key.keysym.sym == SDLK_q) {
 			backspace.pressed = false;
 			return true;
 		}
@@ -281,6 +295,8 @@ void PlayMode::update(float elapsed) {
 		update_timer -= elapsed;
 		// find the next one to update
 		if (update_timer < 0) {
+			if (curr_action == 6)
+				curr_action = -1;
 			if (updating_id != -1) {
 				if (death_id != -1)
 					players[death_id].updated = true;
@@ -401,7 +417,15 @@ void PlayMode::update(float elapsed) {
 						break;
 				}
 				if (updating_id == -1) {
+					curr_action = 6;
+				}
+			}
+			// Find one out of circle
+			if (updating_id == -1 && curr_action == 6) {
+				if (turn%shrink_interval != 0 || turn <= 0){
 					curr_action = -1;
+				} else {
+					updating_id = 0;
 				}
 			}
 			// All updated
@@ -414,12 +438,21 @@ void PlayMode::update(float elapsed) {
 						reset_attack(i, players[i].level);
 						players[i].level = 0;
 					}
+					
+					
 				}
+				
 				update_timer = 0.0f;
 				curr_action = 0;
 				if (players[myid].is_alive)
 					camera_focus(myid);
-				accept_input = true;
+				winner = game_winner();
+				if (winner == -1)
+					accept_input = true;
+				else{
+					camera_focus(winner);
+					accept_input = false;
+				}
 			}
 			else {
 				update_timer = 2.0f;
@@ -464,6 +497,7 @@ void PlayMode::update(float elapsed) {
 							players[updating_id].y--;
 							players[updating_id].transform->position.y -= unit;
 						}
+						
 						for (int i = 0; i < max_player; i++) {
 							if (i == updating_id || !players[i].is_alive)
 								continue;
@@ -505,6 +539,26 @@ void PlayMode::update(float elapsed) {
 					}
 					show_death(updating_id, elapsed);
 				}
+			case 6:
+				if (update_timer < 1.2f) {
+					camera_global();
+					for (int j=xmin-1; j<xmax+1; j++){
+						cubes[j][ymin-1]->transform->position.z += elapsed * 10;
+						cubes[j][ymax+1]->transform->position.z += elapsed * 10;
+					}
+					for (int j=ymin; j<ymax; j++){
+						cubes[xmin-1][j]->transform->position.z += elapsed * 10;
+						cubes[xmax+1][j]->transform->position.z += elapsed * 10;
+					}
+					for (int i=0; i<max_player; i++){
+						if (players[i].x < xmin || players[i].x > xmax || players[i].y < ymin || players[i].y > ymax){
+							players[updating_id].is_alive = false;
+							show_death(updating_id, elapsed);
+						}
+					}
+					
+				}
+				
 			default:
 				break;
 			}
@@ -596,6 +650,12 @@ void PlayMode::update(float elapsed) {
 					waiting = false;
 					turn_timer = 10.0f;
 					turn++;
+					if (turn%shrink_interval == 0 && turn > 0){
+						xmax -= 1;
+						ymax -= 1;
+						xmin += 1;
+						ymin += 1;
+					}
 					accept_input = turn == 0;
 					pressed = 0;
 					max_player = std::stoi(extract_first(server_message, "|"));
@@ -674,14 +734,22 @@ void PlayMode::draw(glm::uvec2 const& drawable_size) {
 			lines.draw_text(text,
 				glm::vec3(at.x, at.y, 0.0),
 				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-				glm::u8vec4(0x00, 0x00, 0x00, 0x00));
+				glm::u8vec4(0xff, 0x00, 0x00, 0x00));
 			float ofs = 2.0f / drawable_size.y;
 			lines.draw_text(text,
 				glm::vec3(at.x + ofs, at.y + ofs, 0.0),
 				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 		};
-
+		if (winner > 0){
+			if (winner == myid)
+				draw_text(glm::vec2(-aspect + 0.1f, 0.6f), "You Won!!!", 0.09f);
+			else
+				draw_text(glm::vec2(-aspect + 0.1f, 0.6f), "Winner is "+std::to_string(winner), 0.09f);
+		}
+		if (!players[myid].is_alive){
+			draw_text(glm::vec2(-aspect + 0.1f, 0.8f), "You lost :(", 0.09f);
+		}
 		draw_text(glm::vec2(-aspect + 0.1f, 0.0f), server_message, 0.09f);
 		draw_text(glm::vec2(-aspect + 0.1f, -0.6f), "Update Timer " + std::to_string(update_timer), 0.09f);
 		if (!waiting) draw_text(glm::vec2(-aspect + 0.1f, -0.9f), "Turn End in " + std::to_string((int)turn_timer), 0.09f);
