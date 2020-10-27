@@ -273,7 +273,7 @@ bool PlayMode::handle_event(SDL_Event const& evt, glm::uvec2 const& window_size)
 void PlayMode::update(float elapsed) {
 	//queue data for sending to server:
 	//TODO: send something that makes sense for your game
-	std::cout << camera->transform->position.x << " " << camera->transform->position.y << " " << camera->transform->position.z << std::endl;
+	
 	// update pointer position
 	if (players[myid].is_alive) {
 		pointer->position.x = players[myid].transform->position.x;
