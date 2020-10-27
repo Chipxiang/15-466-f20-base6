@@ -1,4 +1,4 @@
-# (TODO: your game's title)
+# Bor-Bor Zan Online
 
 Author: Jianxiang Li, Zhengyang Xia
 
