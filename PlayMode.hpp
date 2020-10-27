@@ -95,4 +95,6 @@ struct PlayMode : Mode {
 	bool waiting = true;
 	int winner = -1;
 
+	int shrink_interval = 3;
+	int max_level = 3;
 };

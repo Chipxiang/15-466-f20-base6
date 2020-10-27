@@ -208,12 +208,12 @@ bool PlayMode::handle_event(SDL_Event const& evt, glm::uvec2 const& window_size)
 			action = 3;
 			return true;
 		}
-		else if (evt.key.keysym.sym == SDLK_SPACE) { //charge
+		else if (evt.key.keysym.sym == SDLK_SPACE && players[myid].level < max_level) { //charge
 			pressed = 1;
 			action = 1;
 			return true;
 		}
-		else if (evt.key.keysym.sym == SDLK_BACKSPACE) { //attack
+		else if (evt.key.keysym.sym == SDLK_q) { //attack
 			pressed = 1;
 			action = 2;
 			return true;
@@ -240,7 +240,7 @@ bool PlayMode::handle_event(SDL_Event const& evt, glm::uvec2 const& window_size)
 			space.pressed = false;
 			return true;
 		}
-		else if (evt.key.keysym.sym == SDLK_BACKSPACE) {
+		else if (evt.key.keysym.sym == SDLK_q) {
 			backspace.pressed = false;
 			return true;
 		}
@@ -292,6 +292,8 @@ void PlayMode::update(float elapsed) {
 		update_timer -= elapsed;
 		// find the next one to update
 		if (update_timer < 0) {
+			if (curr_action == 6)
+				curr_action = -1;
 			if (updating_id != -1) {
 				if (death_id != -1)
 					players[death_id].updated = true;
@@ -412,7 +414,15 @@ void PlayMode::update(float elapsed) {
 						break;
 				}
 				if (updating_id == -1) {
+					curr_action = 6;
+				}
+			}
+			// Find one out of circle
+			if (updating_id == -1 && curr_action == 6) {
+				if (turn%shrink_interval != 0 || turn <= 0){
 					curr_action = -1;
+				} else {
+					updating_id = 0;
 				}
 			}
 			// All updated
@@ -425,7 +435,10 @@ void PlayMode::update(float elapsed) {
 						reset_attack(i, players[i].level);
 						players[i].level = 0;
 					}
+					
+					
 				}
+				
 				update_timer = 0.0f;
 				curr_action = 0;
 				if (players[myid].is_alive)
@@ -481,10 +494,7 @@ void PlayMode::update(float elapsed) {
 							players[updating_id].y--;
 							players[updating_id].transform->position.y -= unit;
 						}
-						if (players[updating_id].x < xmin || players[updating_id].x > xmax || players[updating_id].y < ymin || players[updating_id].y > ymax){
-							players[updating_id].is_alive = false;
-							death_id = updating_id;
-						}
+						
 						for (int i = 0; i < max_player; i++) {
 							if (i == updating_id || !players[i].is_alive)
 								continue;
@@ -526,6 +536,25 @@ void PlayMode::update(float elapsed) {
 					}
 					show_death(updating_id, elapsed);
 				}
+			case 6:
+				if (update_timer < 1.2f) {
+					for (int j=xmin-1; j<xmax+1; j++){
+						cubes[j][ymin-1]->transform->position.z += elapsed * 10;
+						cubes[j][ymax+1]->transform->position.z += elapsed * 10;
+					}
+					for (int j=ymin; j<ymax; j++){
+						cubes[xmin-1][j]->transform->position.z += elapsed * 10;
+						cubes[xmax+1][j]->transform->position.z += elapsed * 10;
+					}
+					for (int i=0; i<max_player; i++){
+						if (players[i].x < xmin || players[i].x > xmax || players[i].y < ymin || players[i].y > ymax){
+							players[updating_id].is_alive = false;
+							show_death(updating_id, elapsed);
+						}
+					}
+					
+				}
+				
 			default:
 				break;
 			}
@@ -617,11 +646,11 @@ void PlayMode::update(float elapsed) {
 					waiting = false;
 					turn_timer = 10.0f;
 					turn++;
-					if (turn%2 == 0 && turn > 0){
-						xmax -= 2;
-						ymax -= 2;
-						xmin += 2;
-						ymin += 2;
+					if (turn%shrink_interval == 0 && turn > 0){
+						xmax -= 1;
+						ymax -= 1;
+						xmin += 1;
+						ymin += 1;
 					}
 					accept_input = turn == 0;
 					pressed = 0;
