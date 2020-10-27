@@ -16,7 +16,7 @@ struct PlayMode : Mode {
 	virtual bool handle_event(SDL_Event const&, glm::uvec2 const& window_size) override;
 	virtual void update(float elapsed) override;
 	virtual void draw(glm::uvec2 const& drawable_size) override;
-	std::string extract_first(std::string &message, std::string delimiter);
+	
 
 	Scene scene;
 
@@ -75,6 +75,8 @@ struct PlayMode : Mode {
 	void reset_defend(int id);
 	void camera_focus(int id);
 	void show_death(int id, float elapsed);
+	std::string extract_first(std::string &message, std::string delimiter);
+	int game_winner();
 
 	std::vector<Player> players;
 
@@ -91,5 +93,6 @@ struct PlayMode : Mode {
 	int8_t mov_y = 0;
 
 	bool waiting = true;
+	int winner = -1;
 
 };
