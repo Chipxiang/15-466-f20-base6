@@ -74,6 +74,7 @@ struct PlayMode : Mode {
 	void show_defend(int id);
 	void reset_defend(int id);
 	void camera_focus(int id);
+	void camera_global();
 	void show_death(int id, float elapsed);
 
 	std::vector<Player> players;
