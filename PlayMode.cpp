@@ -754,7 +754,7 @@ void PlayMode::draw(glm::uvec2 const& drawable_size) {
 		}
 		draw_text(glm::vec2(-aspect + 0.1f, 0.0f), server_message, 0.09f);
 		// draw_text(glm::vec2(-aspect + 0.1f, -0.6f), "Update Timer " + std::to_string(update_timer), 0.09f);
-		if (!waiting) draw_text(glm::vec2(-aspect + 0.1f, -0.9f), "Time ends in " + std::to_string((int)turn_timer) +"s", 0.09f);
+		if (!waiting && accept_input) draw_text(glm::vec2(-aspect + 0.1f, -0.9f), "Turn ends in " + std::to_string((int)turn_timer) +"s", 0.09f);
 	}
 	GL_ERRORS();
 }
