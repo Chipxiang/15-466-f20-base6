@@ -4,7 +4,7 @@ Author: Jianxiang Li, Zhengyang Xia
 
 Design: A turn-based strategy battle royale game where players can either strike early or accumulate MP for heavier attacks.
 
-Networking: (TODO: How does your game implement client/server multiplayer? What is transmitted? Where in the code?)
+Networking: The message transmitted between the client and server only contains the players' control inputs. Each client transmits 3 bytes to the server in its update() function, representing its movements in x/y direction and its action of that turn. The server saves inputs from all the players and formats them into a string which is sent to each client. The message also includes each player's id and the total number of players in the game. Each part of the server message is separated by a '|' and each field in a player's information segment is separated by a ','. The client parses the received message and updates its local status of all the players accordingly.
 
 Screen Shot:
 
