@@ -541,6 +541,7 @@ void PlayMode::update(float elapsed) {
 				}
 			case 6:
 				if (update_timer < 1.2f) {
+					camera_global();
 					for (int j=xmin-1; j<xmax+1; j++){
 						cubes[j][ymin-1]->transform->position.z += elapsed * 10;
 						cubes[j][ymax+1]->transform->position.z += elapsed * 10;
