@@ -530,6 +530,7 @@ void PlayMode::update(float elapsed) {
 				// myid = std::stoi(server_message.substr(0, server_message.find("|")));
 				// server_message.erase(0, server_message.find("|")+1);
 				myid = std::stoi(extract_first(server_message, "|"));
+				std::cout << "my id is " << myid << std::endl;
 				if(players[myid].is_alive)
 					camera->transform->position = players[myid].transform->position + camera_offset;
 				pointer->position = players[myid].transform->make_local_to_world() * glm::vec4(0.0f, 0.0f, 4.0f, 0.0f) + players[myid].transform->position;
@@ -553,11 +554,12 @@ void PlayMode::update(float elapsed) {
 						// server_message.erase(0, server_message.find("|")+1);
 						std::string player_info = extract_first(server_message, "|");
 						// players[i].is_alive = std::stoi(extract_first(player_info, ","));
-						players[i].mov_x = std::stoi(extract_first(player_info, ","));
-						players[i].mov_y = std::stoi(extract_first(player_info, ","));
+						int id = std::stoi(extract_first(player_info, ","));
+						players[id].mov_x = std::stoi(extract_first(player_info, ","));
+						players[id].mov_y = std::stoi(extract_first(player_info, ","));
 						// players[i].energy = std::stoi(extract_first(player_info, ","));
-						players[i].action = std::stoi(extract_first(player_info, ","));
-						players[i].updated = false;
+						players[id].action = std::stoi(extract_first(player_info, ","));
+						players[id].updated = false;
 					}
 					if (players[myid].action == 3) {
 						reset_defend(myid);
