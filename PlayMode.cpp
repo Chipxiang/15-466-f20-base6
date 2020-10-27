@@ -130,8 +130,8 @@ void PlayMode::show_defend(int id) {
 
 void PlayMode::reset_defend(int id) {
 	glm::vec3 offset = glm::vec3(0, 0, -1);
-	cubes[players[myid].x][players[myid].y]->transform->position += offset;
-	players[myid].transform->position += offset;
+	cubes[players[id].x][players[id].y]->transform->position += offset;
+	players[id].transform->position += offset;
 }
 PlayMode::~PlayMode() {
 }
@@ -312,6 +312,11 @@ void PlayMode::update(float elapsed) {
 			}
 			// All updated
 			if (updating_id == -1) {
+				for (int i = 0; i < max_player; i++) {
+					if (players[i].action == 3) {
+						reset_defend(i);
+					}
+				}
 				update_timer = 0.0f;
 				curr_action = 0;
 				camera_focus(myid);
